@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../models/category_model.dart';
+import '../screens/recipe_details_screen.dart';
 import '../services/api_service.dart';
 import '../widgets/meal_card.dart';
 import '../screens/all_meals_screen.dart';
+import '../services/api_congthuc.dart';
 
 class HomeBody extends StatefulWidget {
   const HomeBody({super.key});
@@ -130,7 +132,21 @@ class _HomeBodyState extends State<HomeBody> {
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
-                    return MealCard(meal: meals[index], onTap: () {});
+                    return MealCard(
+                        meal: meals[index],
+                        onTap: () {
+                          // Thêm chức năng chuyển trang tại đây
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => RecipeDetailScreen(
+                                // Truyền idMeal từ API sang màn hình chi tiết
+                                mealId: meals[index]["idMeal"],
+                              ),
+                            ),
+                          );
+                        }
+                    );
                   },
                   childCount: _searchController.text.isEmpty
                       ? (meals.length > popularLimit

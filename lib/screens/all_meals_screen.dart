@@ -1,3 +1,4 @@
+import 'package:doanapp/screens/recipe_details_screen.dart';
 import 'package:flutter/material.dart';
 import '../widgets/meal_card.dart';
 
@@ -39,7 +40,20 @@ class AllMealsScreen extends StatelessWidget {
               ],
             ),
 
-            child: MealCard(meal: meals[index], onTap: () {}),
+            child: MealCard(
+                meal: meals[index],
+                onTap: () {
+                  // Chuyển sang màn hình chi tiết khi nhấn vào card
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => RecipeDetailScreen(
+                        mealId: meals[index]["idMeal"], // Truyền ID của món ăn qua
+                      ),
+                    ),
+                  );
+                }
+            ),
           );
         },
       ),
