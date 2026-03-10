@@ -1,0 +1,119 @@
+import 'package:flutter/material.dart';
+import '../services/favorite_service.dart';
+
+class FavoriteScreen extends StatefulWidget {
+  const FavoriteScreen({super.key});
+
+  @override
+  State<FavoriteScreen> createState() => _FavoriteScreenState();
+}
+
+class _FavoriteScreenState extends State<FavoriteScreen> {
+
+  List favorites = [];
+
+  @override
+  void initState() {
+    super.initState();
+    loadFavorites();
+  }
+
+  void loadFavorites() async {
+
+    final data = await FavoriteService.getFavorites(1);
+
+    setState(() {
+      favorites = data;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+
+    return Scaffold(
+
+      appBar: AppBar(
+        title: const Text("Món yêu thích"),
+        backgroundColor: Colors.green,
+      ),
+
+      body: favorites.isEmpty
+          ? const Center(
+              child: Text(
+                "Chưa có món yêu thích ❤️",
+                style: TextStyle(fontSize: 16),
+              ),
+            )
+
+          : GridView.builder(
+
+              padding: const EdgeInsets.all(20),
+
+              itemCount: favorites.length,
+
+              gridDelegate:
+                  const SliverGridDelegateWithFixedCrossAxisCount(
+
+                crossAxisCount: 2,
+                crossAxisSpacing: 15,
+                mainAxisSpacing: 15,
+                childAspectRatio: 1.0,
+              ),
+
+              itemBuilder: (context, index) {
+
+                final meal = favorites[index];
+
+                return Container(
+
+                  decoration: BoxDecoration(
+
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 6),
+                      )
+                    ],
+                  ),
+
+                  child: Column(
+
+                    crossAxisAlignment: CrossAxisAlignment.start,
+
+                    children: [
+
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(20),
+                        ),
+
+                        child: Image.network(
+                          meal["meal_thumb"],
+                          height: 120,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+
+                      Padding(
+                        padding: const EdgeInsets.all(10),
+
+                        child: Text(
+                          meal["meal_name"],
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+    );
+  }
+}
