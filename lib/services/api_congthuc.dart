@@ -30,12 +30,17 @@ class RecipeDetailService {
   }
 
   /// Hàm nội bộ để dịch tên, hướng dẫn và gộp nguyên liệu
-  static Future<Map<String, dynamic>> _processAndTranslateRecipe(Map<String, dynamic> meal) async {
+  static Future<Map<String, dynamic>> _processAndTranslateRecipe(
+    Map<String, dynamic> meal,
+  ) async {
     try {
       // 1. Dịch Tên món & Hướng dẫn (Chạy song song để tiết kiệm thời gian)
       final translations = await Future.wait([
         translator.translate(meal["strMeal"] ?? "", to: 'vi'),
-        translator.translate(meal["strInstructions"] ?? "Không có hướng dẫn", to: 'vi'),
+        translator.translate(
+          meal["strInstructions"] ?? "Không có hướng dẫn",
+          to: 'vi',
+        ),
       ]);
 
       meal["nameVi"] = translations[0].text;
@@ -50,12 +55,15 @@ class RecipeDetailService {
 
         if (ingredient != null && ingredient.trim().isNotEmpty) {
           // Gộp: "250g" + "Beef" -> "250g Beef"
-          String fullText = "${measure?.trim() ?? ""} ${ingredient.trim()}".trim();
+          String fullText = "${measure?.trim() ?? ""} ${ingredient.trim()}"
+              .trim();
 
-          // Bạn có thể chọn dịch từng dòng nguyên liệu ở đây nếu muốn (sẽ chậm hơn một chút)
-          ingredients.add({
+          var translated = await translator.translate(fullText, to: 'vi'); // Dịch nguyên liệu sang tiếng Việt
+
+         
+          ingredients.add({ // Lưu cả bản gốc và bản dịch để dễ debug
             "original": fullText,
-            "translated": "" // Để trống nếu không muốn dịch từng dòng để tối ưu tốc độ
+            "translated": translated.text,
           });
         }
       }

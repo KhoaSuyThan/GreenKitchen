@@ -4,8 +4,14 @@ import '../services/favorite_service.dart';
 class MealCard extends StatefulWidget {
   final dynamic meal;
   final VoidCallback onTap;
+  final bool isHome;
 
-  const MealCard({super.key, required this.meal, required this.onTap});
+  const MealCard({
+    super.key,
+    required this.meal,
+    required this.onTap,
+    this.isHome = false,
+  });
 
   @override
   State<MealCard> createState() => _MealCardState();
@@ -54,6 +60,7 @@ class _MealCardState extends State<MealCard> {
         ),
 
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             /// IMAGE
@@ -130,8 +137,9 @@ class _MealCardState extends State<MealCard> {
                   /// NAME
                   Text(
                     meal["strMeal"],
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                 //   maxLines: 1, 
+                //  overflow: TextOverflow.ellipsis,
+                    softWrap: true,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -152,7 +160,9 @@ class _MealCardState extends State<MealCard> {
                       const SizedBox(width: 4),
 
                       Text(
-                        meal["strArea"] ?? "Unknown",
+                        widget.isHome
+                            ? "Vietnamese"
+                            : (meal["strArea"]?.toString() ?? "Unknown"),
                         style: const TextStyle(
                           color: Colors.grey,
                           fontSize: 12,
