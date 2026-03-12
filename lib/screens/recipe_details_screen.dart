@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/api_congthuc.dart';
 import '../services/auth_service.dart';
 import '../services/history_service.dart';
+import 'package:flutter/services.dart';
 
 class RecipeDetailScreen extends StatefulWidget {
   final String mealId;
@@ -55,14 +56,11 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         // LƯU LỊCH SỬ XEM MÓN
         final user = AuthService.currentUser;
         if (user != null && data != null) {
-          await HistoryService.addHistory(
-            user['id'],
-            {
-              'idMeal': widget.mealId,
-              'strMeal': data['nameVi'] ?? data['nameEn'] ?? "Món ăn",
-              'strMealThumb': data['thumbnail'] ?? "",
-            },
-          );
+          await HistoryService.addHistory(user['id'], {
+            'idMeal': widget.mealId,
+            'strMeal': data['nameVi'] ?? data['nameEn'] ?? "Món ăn",
+            'strMealThumb': data['thumbnail'] ?? "",
+          });
           print("✅ Đã lưu lịch sử: ${data['nameVi']}");
         }
       }
@@ -79,9 +77,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (errorMessage.isNotEmpty || recipeData == null) {
@@ -100,6 +96,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           // Header với ảnh món ăn và nút Back
           SliverAppBar(
             expandedHeight: 300.0,
+            toolbarHeight: 60,
+            centerTitle: true,
+            systemOverlayStyle: SystemUiOverlayStyle.light,
             pinned: true,
             backgroundColor: Colors.orange,
             leading: Padding(
@@ -111,6 +110,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                   onPressed: () {
                     if (widget.onBack != null) {
                       widget.onBack!(); // Quay lại Tab Danh mục
+                    } else {
+                      Navigator.pop(context); // Quay
                     }
                   },
                 ),
@@ -157,11 +158,16 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Row(
                             children: [
-                              const Icon(Icons.check_circle, size: 18, color: Colors.green),
+                              const Icon(
+                                Icons.check_circle,
+                                size: 18,
+                                color: Colors.green,
+                              ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  ing["translated"] != null && ing["translated"].isNotEmpty
+                                  ing["translated"] != null &&
+                                          ing["translated"].isNotEmpty
                                       ? ing["translated"]
                                       : ing["original"],
                                   style: const TextStyle(fontSize: 16),
@@ -180,10 +186,11 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    recipeData!["instructionsVi"] ?? "Chưa có hướng dẫn tiếng Việt.",
+                    recipeData!["instructionsVi"] ??
+                        "Chưa có hướng dẫn tiếng Việt.",
                     style: const TextStyle(fontSize: 16, height: 1.6),
                   ),
-                  const SizedBox(height: 50),
+                  const SizedBox(height: 100),
                 ],
               ),
             ),
