@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../screens/login_screen.dart';
+import '../screens/change_password_screen.dart';
+import '../screens/history_screen.dart';
 
 class ProfileBody extends StatelessWidget {
   const ProfileBody({super.key});
@@ -85,9 +87,17 @@ class ProfileBody extends StatelessWidget {
               children: [
                 _buildSectionTitle("Tài khoản"),
                 _buildMenuItem(Icons.lock_outline, "Đổi mật khẩu", () {
-                  // TODO: Điều hướng sang trang đổi mật khẩu
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ChangePasswordScreen())
+                  );
                 }),
-                _buildMenuItem(Icons.history, "Lịch sử xem món", () {}),
+                _buildMenuItem(Icons.history, "Lịch sử xem món", () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const HistoryScreen())
+                  );
+                }),
 
                 const SizedBox(height: 20),
                 _buildSectionTitle("Cài đặt & Hỗ trợ"),

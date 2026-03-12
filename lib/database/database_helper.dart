@@ -10,7 +10,7 @@ class DatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('recipe.db');
+    _database = await _initDB('recipe1.db');
     return _database!;
   }
 
@@ -23,6 +23,13 @@ class DatabaseHelper {
       path,
       version: 1,
       onCreate: _createDB,
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion <2){
+          await db.execute(
+            "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'"
+          );
+        }
+        }
     );
   }
 
@@ -54,6 +61,17 @@ class DatabaseHelper {
       user_id INTEGER,
       keyword TEXT,
       time TEXT
+    )
+    ''');
+
+    await db.execute('''
+    CREATE TABLE viewed_history(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      meal_id TEXT,
+      meal_name TEXT,
+      meal_thumb TEXT,
+      viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''');
   }
