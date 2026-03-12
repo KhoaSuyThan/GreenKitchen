@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../models/category_model.dart';
-import '../screens/recipe_details_screen.dart';
 import '../services/api_service.dart';
 import '../widgets/meal_card.dart';
 import '../screens/all_meals_screen.dart';
-import '../services/api_congthuc.dart';
 
 class HomeBody extends StatefulWidget {
-  const HomeBody({super.key});
+  final Function(String) onMealTap;
+
+  const HomeBody({super.key, required this.onMealTap});
 
   @override
   State<HomeBody> createState() => _HomeBodyState();
@@ -40,9 +40,18 @@ class _HomeBodyState extends State<HomeBody> {
 
   void loadDefaultMeals() async {
     if (!mounted) return;
+
     setState(() => isLoading = true);
 
-    var data = await ApiService.fetchMeals();
+    var data = await ApiService.fetchVietnameseMeals();
+    
+    if (data != null) {
+      data = data.map((meal) {
+        // Chúng ta gán cứng vì đây là hàm fetchVietnameseMeals
+        meal['strArea'] = 'Việt Nam'; 
+        return meal;
+      }).toList();
+    }
 
     if (mounted) {
       setState(() {
@@ -53,7 +62,9 @@ class _HomeBodyState extends State<HomeBody> {
   }
 
   void onSearchChanged(String query) {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    if (_debounce?.isActive ?? false) {
+      _debounce!.cancel();
+    }
 
     _debounce = Timer(const Duration(milliseconds: 600), () async {
       if (query.isEmpty) {
@@ -61,7 +72,9 @@ class _HomeBodyState extends State<HomeBody> {
         return;
       }
 
-      if (mounted) setState(() => isLoading = true);
+      if (mounted) {
+        setState(() => isLoading = true);
+      }
 
       var data = await ApiService.searchMeals(query);
 
@@ -80,7 +93,7 @@ class _HomeBodyState extends State<HomeBody> {
       child: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          /// HEADER (Search + Categories)
+          /// HEADER
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -88,11 +101,17 @@ class _HomeBodyState extends State<HomeBody> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildSearchBar(),
+
                   const SizedBox(height: 30),
+
                   _buildSectionHeader("Bộ sưu tập"),
+
                   const SizedBox(height: 15),
+
                   _buildCategoryList(),
+
                   const SizedBox(height: 30),
+
                   _buildSectionHeader(
                     _searchController.text.isEmpty
                         ? "Món ăn phổ biến"
@@ -111,21 +130,19 @@ class _HomeBodyState extends State<HomeBody> {
             ),
           ),
 
-          /// LOADING STATE
+          /// LOADING
           if (isLoading)
             const SliverFillRemaining(
               child: Center(
                 child: CircularProgressIndicator(color: Colors.green),
               ),
             )
-          
-          /// EMPTY STATE
+          /// EMPTY
           else if (meals.isEmpty)
             const SliverFillRemaining(
               child: Center(child: Text("Không tìm thấy món nào 😢")),
             )
-          
-          /// MEAL LIST
+          /// MEALS
           else
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -133,25 +150,17 @@ class _HomeBodyState extends State<HomeBody> {
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     return MealCard(
-                        meal: meals[index],
-                        onTap: () {
-                          // Thêm chức năng chuyển trang tại đây
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => RecipeDetailScreen(
-                                // Truyền idMeal từ API sang màn hình chi tiết
-                                mealId: meals[index]["idMeal"],
-                              ),
-                            ),
-                          );
-                        }
+                      meal: meals[index],
+                      onTap: () {
+                        widget.onMealTap(meals[index]["idMeal"]);
+                      },
                     );
                   },
+
                   childCount: _searchController.text.isEmpty
                       ? (meals.length > popularLimit
-                          ? popularLimit
-                          : meals.length)
+                            ? popularLimit
+                            : meals.length)
                       : meals.length,
                 ),
               ),
@@ -176,16 +185,21 @@ class _HomeBodyState extends State<HomeBody> {
           ),
         ],
       ),
+
       child: TextField(
         controller: _searchController,
+
         onChanged: (value) {
           setState(() {});
           onSearchChanged(value);
         },
+
         decoration: InputDecoration(
           hintText: "Tìm kiếm món ăn...",
           hintStyle: TextStyle(color: Colors.grey[400]),
+
           prefixIcon: const Icon(Icons.search, color: Colors.grey),
+
           suffixIcon: _searchController.text.isNotEmpty
               ? IconButton(
                   icon: const Icon(Icons.clear),
@@ -196,7 +210,9 @@ class _HomeBodyState extends State<HomeBody> {
                   },
                 )
               : null,
+
           border: InputBorder.none,
+
           contentPadding: const EdgeInsets.symmetric(vertical: 16),
         ),
       ),
@@ -214,6 +230,7 @@ class _HomeBodyState extends State<HomeBody> {
             fontWeight: FontWeight.bold,
           ),
         ),
+
         if (onTap != null)
           GestureDetector(
             onTap: onTap,
@@ -235,24 +252,36 @@ class _HomeBodyState extends State<HomeBody> {
   Widget _buildCategoryList() {
     return SizedBox(
       height: 110,
+
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
+
         itemCount: categories.length,
+
         itemBuilder: (context, index) {
           final cat = categories[index];
+
           return GestureDetector(
             onTap: () {
               _searchController.text = cat.label;
+
               onSearchChanged(cat.name);
+
               setState(() {});
             },
+
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
+
               width: 90,
+
               margin: const EdgeInsets.only(right: 15),
+
               decoration: BoxDecoration(
                 color: cat.color,
+
                 borderRadius: BorderRadius.circular(18),
+
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.08),
@@ -261,11 +290,14 @@ class _HomeBodyState extends State<HomeBody> {
                   ),
                 ],
               ),
+
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(cat.icon, style: const TextStyle(fontSize: 30)),
+
                   const SizedBox(height: 5),
+
                   Text(
                     cat.label,
                     style: const TextStyle(

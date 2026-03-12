@@ -21,7 +21,7 @@ class AllMealsScreen extends StatelessWidget {
           crossAxisCount: 2,
           crossAxisSpacing: 15,
           mainAxisSpacing: 15,
-          childAspectRatio: 0.7,
+          childAspectRatio: 0.55,
         ),
 
         itemBuilder: (context, index) {
