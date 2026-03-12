@@ -44,6 +44,14 @@ class _HomeBodyState extends State<HomeBody> {
     setState(() => isLoading = true);
 
     var data = await ApiService.fetchVietnameseMeals();
+    
+    if (data != null) {
+      data = data.map((meal) {
+        // Chúng ta gán cứng vì đây là hàm fetchVietnameseMeals
+        meal['strArea'] = 'Việt Nam'; 
+        return meal;
+      }).toList();
+    }
 
     if (mounted) {
       setState(() {
