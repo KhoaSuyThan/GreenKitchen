@@ -5,10 +5,10 @@ class FavoriteScreen extends StatefulWidget {
   const FavoriteScreen({super.key});
 
   @override
-  State<FavoriteScreen> createState() => _FavoriteScreenState();
+  State<FavoriteScreen> createState() => FavoriteScreenState();
 }
 
-class _FavoriteScreenState extends State<FavoriteScreen> {
+class FavoriteScreenState extends State<FavoriteScreen> {
 
   List favorites = [];
 
@@ -18,9 +18,16 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
     loadFavorites();
   }
 
+
+  void refreshFavorites() {
+    loadFavorites();
+  }
+
   void loadFavorites() async {
 
     final data = await FavoriteService.getFavorites(1);
+
+    if (!mounted) return;
 
     setState(() {
       favorites = data;
@@ -57,7 +64,7 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
                 crossAxisCount: 2,
                 crossAxisSpacing: 15,
                 mainAxisSpacing: 15,
-                childAspectRatio: 1.0,
+                childAspectRatio: 0.78,
               ),
 
               itemBuilder: (context, index) {

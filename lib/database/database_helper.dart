@@ -33,7 +33,8 @@ class DatabaseHelper {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT,
       email TEXT,
-      password TEXT
+      password TEXT,
+      role TEXT DEFAULT 'user'
     )
     ''');
 
