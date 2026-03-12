@@ -3,6 +3,8 @@ import 'package:convex_bottom_bar/convex_bottom_bar.dart';
 import '../widgets/HomeBody.dart';
 import 'favorite_screen.dart';
 import 'recipe_details_screen.dart';
+import '../services/auth_service.dart';
+import '../widgets/profile_body.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,15 +30,23 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // danh sách trang
-  List<Widget> get _pages => [
-        HomeBody(onMealTap: openRecipeTab),
-        FavoriteScreen(key: favoriteKey), // gắn key
-        const Center(child: Text("Thêm món mới")),
-        selectedMealId == null
-            ? const Center(child: Text("Chọn món để xem công thức"))
-            : RecipeDetailScreen(mealId: selectedMealId!),
-        const Center(child: Text("Cá nhân")),
-      ];
+  // Trong _HomeScreenState
+  List<Widget> get _pages {
+    bool admin = AuthService.isAdmin();
+
+    return [
+      HomeBody(onMealTap: openRecipeTab),
+      FavoriteScreen(key: favoriteKey),
+      // Nếu là admin thì cho vào trang quản lý, nếu không thì hiện thông báo
+      admin
+          ? const Center(child: Text("Màn hình Quản lý của Admin"))
+          : const Center(child: Text("Bạn cần quyền Admin để thêm món")),
+      selectedMealId == null
+          ? const Center(child: Text("Chọn món để xem công thức"))
+          : RecipeDetailScreen(mealId: selectedMealId!),
+      const ProfileBody(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
