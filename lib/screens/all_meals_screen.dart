@@ -4,8 +4,13 @@ import '../widgets/meal_card.dart';
 
 class AllMealsScreen extends StatelessWidget {
   final List meals;
+  final Function(String) onMealTap;
 
-  const AllMealsScreen({super.key, required this.meals});
+  const AllMealsScreen({
+    super.key,
+    required this.meals,
+    required this.onMealTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -41,18 +46,12 @@ class AllMealsScreen extends StatelessWidget {
             ),
 
             child: MealCard(
-                meal: meals[index],
-                onTap: () {
-                  // Chuyển sang màn hình chi tiết khi nhấn vào card
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => RecipeDetailScreen(
-                        mealId: meals[index]["idMeal"], // Truyền ID của món ăn qua
-                      ),
-                    ),
-                  );
-                }
+              meal: meals[index],
+              onTap: () {
+                // Chuyển sang màn hình chi tiết khi nhấn vào card
+                onMealTap(meals[index]["idMeal"]);
+                Navigator.pop(context);
+              },
             ),
           );
         },

@@ -43,7 +43,14 @@ class _HomeScreenState extends State<HomeScreen> {
           : const Center(child: Text("Bạn cần quyền Admin để thêm món")),
       selectedMealId == null
           ? const Center(child: Text("Chọn món để xem công thức"))
-          : RecipeDetailScreen(mealId: selectedMealId!),
+          : RecipeDetailScreen(
+            mealId: selectedMealId!,
+            onBack: () {
+              setState(() {
+                _selectedIndex = 0; // Chuyển về Tab Danh mục (Index 0)
+              });
+            },
+          ),
       const ProfileBody(),
     ];
   }

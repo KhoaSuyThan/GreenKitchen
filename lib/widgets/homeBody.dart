@@ -45,6 +45,14 @@ class _HomeBodyState extends State<HomeBody> {
 
     var data = await ApiService.fetchVietnameseMeals();
 
+    if (data != null) {
+      data = data.map((meal) {
+        // Chúng ta gán cứng vì đây là hàm fetchVietnameseMeals
+        meal['strArea'] = 'Việt Nam';
+        return meal;
+      }).toList();
+    }
+
     if (mounted) {
       setState(() {
         meals = data;
@@ -112,7 +120,10 @@ class _HomeBodyState extends State<HomeBody> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => AllMealsScreen(meals: meals),
+                          builder: (_) => AllMealsScreen(
+                            meals: meals,
+                            onMealTap: widget.onMealTap,
+                          ),
                         ),
                       );
                     },
