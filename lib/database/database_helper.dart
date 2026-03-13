@@ -23,10 +23,14 @@ class DatabaseHelper {
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
-          // Nếu phiên bản cũ là 1, ta "nâng cấp" bằng cách thêm cột role
-          await db.execute(
-            "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'",
-          );
+          try {
+            // Chỉ thêm nếu cột chưa tồn tại
+            await db.execute(
+              "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'",
+            );
+          } catch (e) {
+            print("Cột 'role' đã có sẵn rồi, không cần thêm nữa!");
+          }
         }
       },
     );
