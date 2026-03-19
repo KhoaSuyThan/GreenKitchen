@@ -50,7 +50,7 @@ class AllMealsScreen extends StatelessWidget {
               onTap: () {
                 // Chuyển sang màn hình chi tiết khi nhấn vào card
                 onMealTap(meals[index]["idMeal"]);
-                Navigator.pop(context);
+                Navigator.pop(context); // Đóng màn hình hiện tại
               },
             ),
           );

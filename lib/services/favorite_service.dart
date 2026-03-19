@@ -47,6 +47,16 @@ class FavoriteService {
     );
   }
 
+  /// xóa TẤT CẢ yêu thích của 1 user
+  static Future<void> removeAllFavorites(int userId) async {
+    final db = await DatabaseHelper.instance.database;
+    await db.delete(
+      'favorites',
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
+  }
+
   /// kiểm tra đã favorite chưa
   static Future<bool> isFavorite(String mealId) async {
 
