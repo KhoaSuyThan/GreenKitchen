@@ -21,11 +21,21 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<FavoriteScreenState> favoriteKey =
       GlobalKey<FavoriteScreenState>();
 
+  //Refresh lại HomeBody khi có thay đổi yêu thích (để cập nhật icon trái tim)
+  Key _homeBodyKey = UniqueKey();
+
   // chuyển sang tab công thức
   void openRecipeTab(String mealId) {
     setState(() {
       selectedMealId = mealId;
       _selectedIndex = 3;
+    });
+  }
+
+  void _refreshHomeBody() {
+    setState(() {
+      // Thay đổi key sẽ buộc HomeBody bị hủy và tạo lại (gọi lại initState)
+      _homeBodyKey = UniqueKey();
     });
   }
 
@@ -35,10 +45,11 @@ class _HomeScreenState extends State<HomeScreen> {
     bool admin = AuthService.isAdmin();
 
     return [
-      HomeBody(onMealTap: openRecipeTab),
+      HomeBody(key: _homeBodyKey, onMealTap: openRecipeTab),
       FavoriteScreen(
         key: favoriteKey,
         onMealTap: openRecipeTab, // Truyền hàm xử lý nhảy tab vào đây
+        onFavoritesChanged: _refreshHomeBody,
       ),
       // Nếu là admin thì cho vào trang quản lý, nếu không thì hiện thông báo
       admin
@@ -47,13 +58,13 @@ class _HomeScreenState extends State<HomeScreen> {
       selectedMealId == null
           ? const Center(child: Text("Chọn món để xem công thức"))
           : RecipeDetailScreen(
-            mealId: selectedMealId!,
-            onBack: () {
-              setState(() {
-                _selectedIndex = 0; // Chuyển về Tab Danh mục (Index 0)
-              });
-            },
-          ),
+              mealId: selectedMealId!,
+              onBack: () {
+                setState(() {
+                  _selectedIndex = 0; // Chuyển về Tab Danh mục (Index 0)
+                });
+              },
+            ),
       ProfileBody(onHistoryMealTap: openRecipeTab),
     ];
   }
@@ -63,10 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color(0xffF8F8F8),
 
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _pages,
-      ),
+      body: IndexedStack(index: _selectedIndex, children: _pages),
 
       bottomNavigationBar: ConvexAppBar(
         key: ValueKey(_selectedIndex),
@@ -88,9 +96,13 @@ class _HomeScreenState extends State<HomeScreen> {
             _selectedIndex = index;
           });
 
-          // ⭐ mở tab yêu thích thì reload
+          //  mở tab yêu thích thì reload
           if (index == 1) {
             favoriteKey.currentState?.refreshFavorites();
+          }
+          // mở tab công thức thì để hiện thông báo
+          if (index == 0) {
+            _refreshHomeBody();
           }
         },
       ),
