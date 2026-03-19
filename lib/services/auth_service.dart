@@ -34,40 +34,6 @@ class AuthService {
     return false;
   }
 
-  static Future<String?> changePassword({
-    required int userId,
-    required String oldPassword,
-    required String newPassword,
-  }) async {
-    final db = await DatabaseHelper.instance.database;
-
-    // 1. Kiểm tra mật khẩu cũ có khớp với id này không
-    final List<Map<String, dynamic>> userRecord = await db.query(
-      'users',
-      where: 'id = ? AND password = ?',
-      whereArgs: [userId, oldPassword],
-    );
-
-    if (userRecord.isEmpty) {
-      return "Mật khẩu cũ không chính xác.";
-    }
-
-    // 2. Nếu khớp, tiến hành cập nhật mật khẩu mới
-    await db.update(
-      'users',
-      {'password': newPassword},
-      where: 'id = ?',
-      whereArgs: [userId],
-    );
-
-    // 3. Cập nhật lại mật khẩu trong "biến tạm" currentUser để đồng bộ app
-    if (currentUser != null) {
-      currentUser = Map<String, dynamic>.from(currentUser!)..['password'] = newPassword;
-    }
-
-    return null; // Trả về null tức là thành công
-  }
-
   // Đăng xuất
   static void logout() {
     currentUser = null;
