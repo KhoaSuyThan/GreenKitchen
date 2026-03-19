@@ -26,4 +26,23 @@ class HistoryService {
         orderBy: 'id DESC'
     );
   }
+
+  static Future<int> deleteHistoryItem(int id) async {
+    final db = await DatabaseHelper.instance.database;
+    return await db.delete(
+      'viewed_history',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // 2. Xóa toàn bộ lịch sử của một người dùng
+  static Future<int> clearAllHistory(int userId) async {
+    final db = await DatabaseHelper.instance.database;
+    return await db.delete(
+      'viewed_history',
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
+  }
 }

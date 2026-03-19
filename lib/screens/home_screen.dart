@@ -36,7 +36,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return [
       HomeBody(onMealTap: openRecipeTab),
-      FavoriteScreen(key: favoriteKey),
+      FavoriteScreen(
+        key: favoriteKey,
+        onMealTap: openRecipeTab, // Truyền hàm xử lý nhảy tab vào đây
+      ),
       // Nếu là admin thì cho vào trang quản lý, nếu không thì hiện thông báo
       admin
           ? const Center(child: Text("Màn hình Quản lý của Admin"))
@@ -51,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
               });
             },
           ),
-      const ProfileBody(),
+      ProfileBody(onHistoryMealTap: openRecipeTab),
     ];
   }
 

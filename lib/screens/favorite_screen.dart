@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/favorite_service.dart';
 
 class FavoriteScreen extends StatefulWidget {
-  const FavoriteScreen({super.key});
+  final Function(String)? onMealTap;
+  const FavoriteScreen({super.key, this.onMealTap});
 
   @override
   State<FavoriteScreen> createState() => FavoriteScreenState();
@@ -71,52 +72,50 @@ class FavoriteScreenState extends State<FavoriteScreen> {
 
                 final meal = favorites[index];
 
-                return Container(
 
-                  decoration: BoxDecoration(
-
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 10,
-                        offset: const Offset(0, 6),
-                      )
-                    ],
-                  ),
-
-                  child: Column(
-
-                    crossAxisAlignment: CrossAxisAlignment.start,
-
-                    children: [
-
-                      ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(20),
-                        ),
-
-                        child: Image.network(
-                          meal["meal_thumb"],
-                          height: 120,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-
-                      Padding(
-                        padding: const EdgeInsets.all(10),
-
-                        child: Text(
-                          meal["meal_name"],
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
+                return InkWell(
+                  borderRadius: BorderRadius.circular(20), // Bo góc hiệu ứng nhấn
+                  onTap: () {
+                    // Gọi hàm chuyển tab từ HomeScreen truyền xuống
+                    if (widget.onMealTap != null) {
+                      widget.onMealTap!(meal["meal_id"]);
+                    }
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 10,
+                          offset: const Offset(0, 6),
+                        )
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                          child: Image.network(
+                            meal["meal_thumb"],
+                            height: 120,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
                           ),
                         ),
-                      ),
-                    ],
+                        Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Text(
+                            meal["meal_name"],
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
