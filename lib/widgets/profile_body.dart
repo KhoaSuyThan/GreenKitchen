@@ -5,12 +5,17 @@ import '../screens/change_password_screen.dart';
 import '../screens/history_screen.dart';
 
 class ProfileBody extends StatelessWidget {
-  const ProfileBody({super.key});
+
+  final Function(String) onHistoryMealTap; // Khai báo hàm nhận vào lịch sử
+  const ProfileBody({super.key, required this.onHistoryMealTap});
+
 
   @override
   Widget build(BuildContext context) {
     final user = AuthService.currentUser;
     final String role = user?['role'] ?? 'user';
+
+
 
     return SingleChildScrollView(
       child: Column(
@@ -92,11 +97,16 @@ class ProfileBody extends StatelessWidget {
                       MaterialPageRoute(builder: (context) => const ChangePasswordScreen())
                   );
                 }),
-                _buildMenuItem(Icons.history, "Lịch sử xem món", () {
-                  Navigator.push(
+                _buildMenuItem(Icons.history, "Lịch sử xem món", () async {
+                  final String? selectedId = await Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const HistoryScreen())
                   );
+
+                  // 2. Nếu có ID trả về (người dùng đã chọn một món)
+                  if (selectedId != null) {
+                    onHistoryMealTap(selectedId); // Gọi hàm để HomeScreen nhảy Tab
+                  }
                 }),
 
                 const SizedBox(height: 20),
@@ -179,4 +189,6 @@ class ProfileBody extends StatelessWidget {
       ),
     );
   }
+
+
 }
