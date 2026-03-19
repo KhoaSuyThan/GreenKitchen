@@ -44,11 +44,11 @@ class _HomeBodyState extends State<HomeBody> {
     setState(() => isLoading = true);
 
     var data = await ApiService.fetchVietnameseMeals();
-    
+
     if (data != null) {
       data = data.map((meal) {
         // Chúng ta gán cứng vì đây là hàm fetchVietnameseMeals
-        meal['strArea'] = 'Việt Nam'; 
+        meal['strArea'] = 'Việt Nam';
         return meal;
       }).toList();
     }
@@ -120,7 +120,10 @@ class _HomeBodyState extends State<HomeBody> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => AllMealsScreen(meals: meals),
+                          builder: (_) => AllMealsScreen(
+                            meals: meals,
+                            onMealTap: widget.onMealTap,
+                          ),
                         ),
                       );
                     },
@@ -151,6 +154,7 @@ class _HomeBodyState extends State<HomeBody> {
                   (context, index) {
                     return MealCard(
                       meal: meals[index],
+                      isHome: _searchController.text.isEmpty,
                       onTap: () {
                         widget.onMealTap(meals[index]["idMeal"]);
                       },

@@ -9,7 +9,7 @@ class DatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('recipe.db');
+    _database = await _initDB('recipe1.db');
     return _database!;
   }
 
@@ -23,10 +23,14 @@ class DatabaseHelper {
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
-          // Nếu phiên bản cũ là 1, ta "nâng cấp" bằng cách thêm cột role
-          await db.execute(
-            "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'",
-          );
+          try {
+            // Chỉ thêm nếu cột chưa tồn tại
+            await db.execute(
+              "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'",
+            );
+          } catch (e) {
+            print("Cột 'role' đã có sẵn rồi, không cần thêm nữa!");
+          }
         }
       },
     );
@@ -59,6 +63,17 @@ class DatabaseHelper {
       user_id INTEGER,
       keyword TEXT,
       time TEXT
+    )
+    ''');
+
+    await db.execute('''
+    CREATE TABLE viewed_history(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      meal_id TEXT,
+      meal_name TEXT,
+      meal_thumb TEXT,
+      viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''');
   }
