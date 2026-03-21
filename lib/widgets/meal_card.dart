@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import '../services/favorite_service.dart';
 
@@ -67,15 +69,16 @@ class _MealCardState extends State<MealCard> {
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
-                  ),
-                  child: Image.network(
-                    meal["strMealThumb"],
-                    height: 150,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  child: meal['isLocal'] == true
+                      ? Image.file(
+                          File(meal['strMealThumb']),
+                          fit: BoxFit.cover,
+                        ) // Ảnh từ SQLite (file máy)
+                      : Image.network(
+                          meal['strMealThumb'],
+                          fit: BoxFit.cover,
+                        ), // Ảnh từ API (link web)
                 ),
 
                 /// FAVORITE
@@ -137,8 +140,8 @@ class _MealCardState extends State<MealCard> {
                   /// NAME
                   Text(
                     meal["strMeal"],
-                 //   maxLines: 1, 
-                //  overflow: TextOverflow.ellipsis,
+                    //   maxLines: 1,
+                    //  overflow: TextOverflow.ellipsis,
                     softWrap: true,
                     style: const TextStyle(
                       fontSize: 16,
@@ -160,9 +163,10 @@ class _MealCardState extends State<MealCard> {
                       const SizedBox(width: 4),
 
                       Text(
-                        widget.isHome
-                            ? "Vietnamese"
-                            : (meal["strArea"]?.toString() ?? "Unknown"),
+                        
+                        meal['isLocal'] == true 
+                            ? "Cộng đồng" 
+                            : (meal["strArea"]?.toString() ?? "Quốc tế"),
                         style: const TextStyle(
                           color: Colors.grey,
                           fontSize: 12,

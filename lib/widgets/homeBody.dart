@@ -6,6 +6,8 @@ import '../models/category_model.dart';
 import '../services/api_service.dart';
 import '../widgets/meal_card.dart';
 import '../screens/all_meals_screen.dart';
+// THÊM: Import DatabaseHelper để lấy món từ SQLite
+import '../database/database_helper.dart';
 
 class HomeBody extends StatefulWidget {
   final Function(String) onMealTap;
@@ -23,7 +25,7 @@ class _HomeBodyState extends State<HomeBody> {
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
 
-  final int popularLimit = 4;
+  final int popularLimit = 6; // Tăng nhẹ limit để hiện được cả món cộng đồng
 
   @override
   void initState() {
@@ -38,29 +40,39 @@ class _HomeBodyState extends State<HomeBody> {
     super.dispose();
   }
 
+  // CẬP NHẬT: Hàm tải món ăn kết hợp cả API và SQLite
   void loadDefaultMeals() async {
     if (!mounted) return;
 
     setState(() => isLoading = true);
 
-    var data = await ApiService.fetchVietnameseMeals();
+    // 1. Lấy dữ liệu từ API (Vietnamese Meals)
+    var apiData = await ApiService.fetchVietnameseMeals() ?? [];
+    
+    // 2. Lấy dữ liệu từ SQLite (Các bài đã được Admin duyệt)
+    var localData = await DatabaseHelper.instance.getApprovedRecipes();
 
-    if (data != null) {
-      data = data.map((meal) {
-        // Chúng ta gán cứng vì đây là hàm fetchVietnameseMeals
-        meal['strArea'] = 'Việt Nam';
-        return meal;
-      }).toList();
-    }
+    // 3. Chuẩn hóa dữ liệu SQLite sang format của API để MealCard dùng chung được
+    List<Map<String, dynamic>> formattedLocalData = localData.map((item) {
+      return {
+        "idMeal": item['id'].toString(), 
+        "strMeal": item['title'],
+        "strMealThumb": item['image_path'], // Đây là đường dẫn file trong máy
+        "strArea": "Cộng đồng",             // Dùng để hiển thị Badge
+        "isLocal": true,                   // Cờ hiệu nhận biết món từ User
+      };
+    }).toList();
 
     if (mounted) {
       setState(() {
-        meals = data;
+        // Gộp lại: Ưu tiên hiển thị món cộng đồng lên trước
+        meals = [...formattedLocalData, ...apiData];
         isLoading = false;
       });
     }
   }
 
+  // CẬP NHẬT: Tìm kiếm trên cả 2 nguồn
   void onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) {
       _debounce!.cancel();
@@ -76,11 +88,24 @@ class _HomeBodyState extends State<HomeBody> {
         setState(() => isLoading = true);
       }
 
-      var data = await ApiService.searchMeals(query);
+      // Tìm trên API
+      var apiResults = await ApiService.searchMeals(query) ?? [];
+      
+      // Tìm trên Local (SQLite)
+      var allLocal = await DatabaseHelper.instance.getApprovedRecipes();
+      var localResults = allLocal.where((m) => 
+        m['title'].toString().toLowerCase().contains(query.toLowerCase())
+      ).map((item) => {
+        "idMeal": item['id'].toString(),
+        "strMeal": item['title'],
+        "strMealThumb": item['image_path'],
+        "strArea": "Cộng đồng",
+        "isLocal": true,
+      }).toList();
 
       if (mounted) {
         setState(() {
-          meals = data;
+          meals = [...localResults, ...apiResults];
           isLoading = false;
         });
       }
@@ -93,7 +118,7 @@ class _HomeBodyState extends State<HomeBody> {
       child: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          /// HEADER
+          /// HEADER (Giữ nguyên cấu trúc của bạn)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -101,17 +126,11 @@ class _HomeBodyState extends State<HomeBody> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildSearchBar(),
-
                   const SizedBox(height: 30),
-
                   _buildSectionHeader("Bộ sưu tập"),
-
                   const SizedBox(height: 15),
-
                   _buildCategoryList(),
-
                   const SizedBox(height: 30),
-
                   _buildSectionHeader(
                     _searchController.text.isEmpty
                         ? "Món ăn phổ biến"
@@ -145,7 +164,7 @@ class _HomeBodyState extends State<HomeBody> {
             const SliverFillRemaining(
               child: Center(child: Text("Không tìm thấy món nào 😢")),
             )
-          /// MEALS
+          /// MEALS (Giữ nguyên cấu trúc của bạn)
           else
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -156,15 +175,15 @@ class _HomeBodyState extends State<HomeBody> {
                       meal: meals[index],
                       isHome: _searchController.text.isEmpty,
                       onTap: () {
+                        // mealId đã được chuẩn hóa ở trên nên cứ truyền vào
                         widget.onMealTap(meals[index]["idMeal"]);
                       },
                     );
                   },
-
                   childCount: _searchController.text.isEmpty
                       ? (meals.length > popularLimit
-                            ? popularLimit
-                            : meals.length)
+                          ? popularLimit
+                          : meals.length)
                       : meals.length,
                 ),
               ),
@@ -176,6 +195,7 @@ class _HomeBodyState extends State<HomeBody> {
     );
   }
 
+  /// CÁC HÀM BUILD WIDGET PHỤ (Giữ nguyên 100% code của bạn)
   Widget _buildSearchBar() {
     return Container(
       decoration: BoxDecoration(
@@ -189,21 +209,16 @@ class _HomeBodyState extends State<HomeBody> {
           ),
         ],
       ),
-
       child: TextField(
         controller: _searchController,
-
         onChanged: (value) {
           setState(() {});
           onSearchChanged(value);
         },
-
         decoration: InputDecoration(
-          hintText: "Tìm kiếm món ăn...",
+          hintText: "Tìm kiếm món ăn...",
           hintStyle: TextStyle(color: Colors.grey[400]),
-
           prefixIcon: const Icon(Icons.search, color: Colors.grey),
-
           suffixIcon: _searchController.text.isNotEmpty
               ? IconButton(
                   icon: const Icon(Icons.clear),
@@ -214,9 +229,7 @@ class _HomeBodyState extends State<HomeBody> {
                   },
                 )
               : null,
-
           border: InputBorder.none,
-
           contentPadding: const EdgeInsets.symmetric(vertical: 16),
         ),
       ),
@@ -234,7 +247,6 @@ class _HomeBodyState extends State<HomeBody> {
             fontWeight: FontWeight.bold,
           ),
         ),
-
         if (onTap != null)
           GestureDetector(
             onTap: onTap,
@@ -256,36 +268,24 @@ class _HomeBodyState extends State<HomeBody> {
   Widget _buildCategoryList() {
     return SizedBox(
       height: 110,
-
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-
         itemCount: categories.length,
-
         itemBuilder: (context, index) {
           final cat = categories[index];
-
           return GestureDetector(
             onTap: () {
               _searchController.text = cat.label;
-
               onSearchChanged(cat.name);
-
               setState(() {});
             },
-
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
-
               width: 90,
-
               margin: const EdgeInsets.only(right: 15),
-
               decoration: BoxDecoration(
                 color: cat.color,
-
                 borderRadius: BorderRadius.circular(18),
-
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.08),
@@ -294,14 +294,11 @@ class _HomeBodyState extends State<HomeBody> {
                   ),
                 ],
               ),
-
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(cat.icon, style: const TextStyle(fontSize: 30)),
-
                   const SizedBox(height: 5),
-
                   Text(
                     cat.label,
                     style: const TextStyle(

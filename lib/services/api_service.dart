@@ -6,7 +6,7 @@ class ApiService {
   static final translator = GoogleTranslator();
   static const String baseUrl = "https://www.themealdb.com/api/json/v1/1";
 
-  /// Tìm kiếm món ăn (Dịch Việt -> Anh rồi mới search)
+  /// 1. Tìm kiếm món ăn (Dịch Việt -> Anh rồi mới search)
   static Future<List<dynamic>> searchMeals(String keyword) async {
     try {
       var translation = await translator.translate(keyword, from: 'vi', to: 'en');
@@ -27,28 +27,31 @@ class ApiService {
     return [];
   }
 
-  /// 3. Lọc theo danh mục (Sửa lỗi ấn "Bánh" ko ra gì)
-
-  /// 4. Món ăn Việt Nam 
+  /// 2. Món ăn Việt Nam 
   static Future<List<dynamic>> fetchVietnameseMeals() async {
+    try {
+      final response = await http.get(
+        Uri.parse("$baseUrl/filter.php?a=Vietnamese"),
+      );
 
-  final response = await http.get(
-    Uri.parse(
-      "https://www.themealdb.com/api/json/v1/1/filter.php?a=Vietnamese",
-    ),
-  );
-
-  if (response.statusCode == 200) {
-
-    final data = json.decode(response.body);
-
-    return data["meals"] ?? [];
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        List<dynamic> meals = data["meals"] ?? [];
+        
+        // FIX: API filter.php không trả về strArea, tự gán cứng tiếng Anh
+        for (var meal in meals) {
+          meal['strArea'] = 'Vietnamese';
+        }
+        
+        return meals;
+      }
+    } catch (e) {
+      print("Lỗi fetchVietnameseMeals: $e");
+    }
+    return [];
   }
 
-  return [];
-}
-
-  /// 4. Hàm phụ trợ: Dịch tên món ăn và lọc các từ khóa "ngáo"
+  /// 3. Hàm phụ trợ: Dịch tên món ăn và lọc các từ khóa "ngáo"
   static Future<List<dynamic>> _translateMealList(List<dynamic> meals) async {
     // Từ điển sửa lỗi dịch sai
     final Map<String, String> manualDictionary = {
@@ -61,7 +64,6 @@ class ApiService {
 
     // Chặn từ phi thực phẩm
     final blacklist = ['dầu khí', 'nghiền', 'máy móc', 'hệ thống', 'dữ liệu'];
-    
 
     int limit = meals.length > 12 ? 12 : meals.length;
 

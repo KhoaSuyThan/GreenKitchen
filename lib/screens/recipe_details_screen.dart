@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../services/api_congthuc.dart';
 import '../services/auth_service.dart';
 import '../services/history_service.dart';
 import 'package:flutter/services.dart';
+// Import DatabaseHelper để lấy món ăn Local
+import '../database/database_helper.dart';
 
 class RecipeDetailScreen extends StatefulWidget {
   final String mealId;
@@ -18,6 +21,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   Map<String, dynamic>? recipeData;
   bool isLoading = true;
   String errorMessage = "";
+  bool isLocalMeal = false; // Cờ kiểm tra xem món ăn này có phải từ SQLite không
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -26,7 +30,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     _fetchRecipeDetail();
   }
 
-  // Cập nhật khi nhấn vào món ăn khác từ bên ngoài
   @override
   void didUpdateWidget(covariant RecipeDetailScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -34,10 +37,10 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
       setState(() {
         isLoading = true;
         recipeData = null;
+        isLocalMeal = false;
       });
       _fetchRecipeDetail();
 
-      // Cuộn lên đầu trang khi đổi món
       if (_scrollController.hasClients) {
         _scrollController.jumpTo(0);
       }
@@ -46,22 +49,45 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
 
   Future<void> _fetchRecipeDetail() async {
     try {
+      // 1. KIỂM TRA SQLITE TRƯỚC (MÓN CỘNG ĐỒNG)
+      int? localId = int.tryParse(widget.mealId); // Nếu parse được sang số (ID nhỏ)
+      if (localId != null) {
+        final localData = await DatabaseHelper.instance.getRecipeById(localId);
+        
+        if (localData != null) {
+          if (mounted) {
+            setState(() {
+              // Chuyển đổi dữ liệu SQLite sang cấu trúc giống API để UI không bị lỗi
+              recipeData = {
+                'idMeal': localData['id'].toString(),
+                'nameVi': localData['title'],
+                'thumbnail': localData['image_path'],
+                // Món local nguyên liệu thường là 1 string dài, ta bọc nó vào List giống API
+                'ingredientsList': [
+                  {"original": localData['ingredients'], "translated": localData['ingredients']}
+                ],
+                'instructionsVi': localData['instructions'],
+              };
+              isLocalMeal = true;
+              isLoading = false;
+            });
+            _saveHistory(recipeData!); // Lưu lịch sử
+          }
+          return; // Dừng hàm lại, không gọi API nữa
+        }
+      }
+
+      // 2. NẾU KHÔNG CÓ TRONG SQLITE, GỌI API (MÓN QUỐC TẾ)
       final data = await RecipeDetailService.getRecipeById(widget.mealId);
       if (mounted) {
         setState(() {
           recipeData = data;
+          isLocalMeal = false;
           isLoading = false;
         });
 
-        // LƯU LỊCH SỬ XEM MÓN
-        final user = AuthService.currentUser;
-        if (user != null && data != null) {
-          await HistoryService.addHistory(user['id'], {
-            'idMeal': widget.mealId,
-            'strMeal': data['nameVi'] ?? data['nameEn'] ?? "Món ăn",
-            'strMealThumb': data['thumbnail'] ?? "",
-          });
-          print("✅ Đã lưu lịch sử: ${data['nameVi']}");
+        if (data != null) {
+          _saveHistory(data); // Lưu lịch sử
         }
       }
     } catch (e) {
@@ -71,6 +97,19 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           errorMessage = "Không thể tải dữ liệu. Vui lòng thử lại.";
         });
       }
+    }
+  }
+
+  // Hàm phụ trợ lưu lịch sử tách riêng cho gọn
+  Future<void> _saveHistory(Map<String, dynamic> data) async {
+    final user = AuthService.currentUser;
+    if (user != null) {
+      await HistoryService.addHistory(user['id'], {
+        'idMeal': widget.mealId,
+        'strMeal': data['nameVi'] ?? data['nameEn'] ?? "Món ăn",
+        'strMealThumb': data['thumbnail'] ?? "",
+      });
+      print("✅ Đã lưu lịch sử: ${data['nameVi']}");
     }
   }
 
@@ -127,10 +166,20 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                   shadows: [Shadow(color: Colors.black, blurRadius: 8)],
                 ),
               ),
-              background: Image.network(
-                recipeData!["thumbnail"],
-                fit: BoxFit.cover,
-              ),
+              background: isLocalMeal
+                  // Phân biệt cách hiển thị ảnh: Local dùng Image.file, API dùng Image.network
+                  ? Image.file(
+                      File(recipeData!["thumbnail"]),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => 
+                        const Icon(Icons.broken_image, size: 100, color: Colors.grey),
+                    )
+                  : Image.network(
+                      recipeData!["thumbnail"],
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => 
+                        const Icon(Icons.broken_image, size: 100, color: Colors.grey),
+                    ),
             ),
           ),
 
@@ -157,11 +206,16 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Row(
+                            // Căn chỉnh lên trên để nếu nguyên liệu dài rớt dòng, icon vẫn ở trên cùng
+                            crossAxisAlignment: CrossAxisAlignment.start, 
                             children: [
-                              const Icon(
-                                Icons.check_circle,
-                                size: 18,
-                                color: Colors.green,
+                              const Padding(
+                                padding: EdgeInsets.only(top: 2), // Cân bằng vị trí icon với chữ
+                                child: Icon(
+                                  Icons.check_circle,
+                                  size: 18,
+                                  color: Colors.green,
+                                ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(

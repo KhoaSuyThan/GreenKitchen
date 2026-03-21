@@ -1,4 +1,3 @@
-import 'package:doanapp/screens/recipe_details_screen.dart';
 import 'package:flutter/material.dart';
 import '../widgets/meal_card.dart';
 
@@ -15,44 +14,35 @@ class AllMealsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Món ăn phổ biến")),
+      appBar: AppBar(
+        title: const Text("Món ăn phổ biến"),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
+      ),
 
       body: GridView.builder(
         padding: const EdgeInsets.all(16),
-
         itemCount: meals.length,
 
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
           crossAxisSpacing: 15,
           mainAxisSpacing: 15,
-          childAspectRatio: 0.55,
+          // FIX LỖI OVERFLOW: Ép tỷ lệ xuống 0.48 để thẻ dài ra, chứa đủ 2 dòng chữ
+          childAspectRatio: 0.48, 
         ),
 
         itemBuilder: (context, index) {
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-
-            child: MealCard(
-              meal: meals[index],
-              onTap: () {
-                // Chuyển sang màn hình chi tiết khi nhấn vào card
-                onMealTap(meals[index]["idMeal"]);
-                Navigator.pop(context); // Đóng màn hình hiện tại
-              },
-            ),
+          return MealCard(
+            meal: meals[index],
+            // SỬA Ở ĐÂY: Chuyển thành false để không bị gán cứng chữ "Vietnamese" nữa
+            isHome: false, 
+            onTap: () {
+              // Ép kiểu ID sang String để tránh lỗi khi click vào món Local (ID là số)
+              onMealTap(meals[index]["idMeal"].toString());
+              Navigator.pop(context); // Đóng màn hình lưới
+            },
           );
         },
       ),
