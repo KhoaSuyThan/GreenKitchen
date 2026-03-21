@@ -5,6 +5,9 @@ import 'favorite_screen.dart';
 import 'recipe_details_screen.dart';
 import '../services/auth_service.dart';
 import '../widgets/profile_body.dart';
+// Import 2 màn hình mới (Bạn cần tạo 2 file này theo code ở mục 2 và 3 bên dưới)
+import 'AdminApprovalScreen.dart';
+import 'AddRecipeFormScreen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,14 +20,9 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   String? selectedMealId;
 
-  // ⭐ key đúng phải là FavoriteScreenState
-  final GlobalKey<FavoriteScreenState> favoriteKey =
-      GlobalKey<FavoriteScreenState>();
-
-  //Refresh lại HomeBody khi có thay đổi yêu thích (để cập nhật icon trái tim)
+  final GlobalKey<FavoriteScreenState> favoriteKey = GlobalKey<FavoriteScreenState>();
   Key _homeBodyKey = UniqueKey();
 
-  // chuyển sang tab công thức
   void openRecipeTab(String mealId) {
     setState(() {
       selectedMealId = mealId;
@@ -34,34 +32,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _refreshHomeBody() {
     setState(() {
-      // Thay đổi key sẽ buộc HomeBody bị hủy và tạo lại (gọi lại initState)
       _homeBodyKey = UniqueKey();
     });
   }
 
-  // danh sách trang
-  // Trong _HomeScreenState
   List<Widget> get _pages {
-    bool admin = AuthService.isAdmin();
-
     return [
       HomeBody(key: _homeBodyKey, onMealTap: openRecipeTab),
       FavoriteScreen(
         key: favoriteKey,
-        onMealTap: openRecipeTab, // Truyền hàm xử lý nhảy tab vào đây
+        onMealTap: openRecipeTab,
         onFavoritesChanged: _refreshHomeBody,
       ),
-      // Nếu là admin thì cho vào trang quản lý, nếu không thì hiện thông báo
-      admin
-          ? const Center(child: Text("Màn hình Quản lý của Admin"))
-          : const Center(child: Text("Bạn cần quyền Admin để thêm món")),
+      // Index 2: Placeholder vì nút giữa dùng Navigator.push
+      const Center(child: CircularProgressIndicator()), 
       selectedMealId == null
           ? const Center(child: Text("Chọn món để xem công thức"))
           : RecipeDetailScreen(
               mealId: selectedMealId!,
               onBack: () {
                 setState(() {
-                  _selectedIndex = 0; // Chuyển về Tab Danh mục (Index 0)
+                  _selectedIndex = 0;
                 });
               },
             ),
@@ -73,11 +64,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xffF8F8F8),
-
       body: IndexedStack(index: _selectedIndex, children: _pages),
-
       bottomNavigationBar: ConvexAppBar(
-        key: ValueKey(_selectedIndex),
         initialActiveIndex: _selectedIndex,
         backgroundColor: Colors.white,
         activeColor: Colors.green,
@@ -90,17 +78,29 @@ class _HomeScreenState extends State<HomeScreen> {
           TabItem(icon: Icons.menu_book_outlined, title: 'Công thức'),
           TabItem(icon: Icons.person_outline, title: 'Cá nhân'),
         ],
-
         onTap: (index) {
+          // XỬ LÝ RIÊNG CHO NÚT GIỮA (INDEX 2)
+          if (index == 2) {
+            bool admin = AuthService.isAdmin();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => admin 
+                    ? const AdminApprovalScreen() 
+                    : const AddRecipeFormScreen(),
+              ),
+            ).then((_) => setState(() {})); // Refresh lại nếu cần sau khi quay về
+            return; // Dừng lại, không chạy xuống setState(_selectedIndex) bên dưới
+          }
+
+          // CÁC TAB KHÁC GIỮ NGUYÊN
           setState(() {
             _selectedIndex = index;
           });
 
-          //  mở tab yêu thích thì reload
           if (index == 1) {
             favoriteKey.currentState?.refreshFavorites();
           }
-          // mở tab công thức thì để hiện thông báo
           if (index == 0) {
             _refreshHomeBody();
           }
