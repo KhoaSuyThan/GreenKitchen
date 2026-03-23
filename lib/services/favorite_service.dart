@@ -1,73 +1,73 @@
-import '../database/database_helper.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FavoriteService {
+  static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  /// thêm món yêu thích
+  /// 1. Thêm món yêu thích lên Firebase
   static Future<void> addFavorite(
-      int userId,
+      String userId, // Đổi int -> String
       String mealId,
       String mealName,
       String mealThumb
       ) async {
 
-    final db = await DatabaseHelper.instance.database;
-
-    await db.insert(
-      'favorites',
-      {
-        'user_id': userId,
-        'meal_id': mealId,
-        'meal_name': mealName,
-        'meal_thumb': mealThumb,
-      },
-    );
+    await _db.collection('favorites').add({
+      'user_id': userId,
+      'meal_id': mealId,
+      'meal_name': mealName,
+      'meal_thumb': mealThumb,
+      'created_at': FieldValue.serverTimestamp(),
+    });
   }
 
-  /// lấy danh sách yêu thích
-  static Future<List<Map<String, dynamic>>> getFavorites(int userId) async {
+  /// 2. Lấy danh sách yêu thích của một User từ Firebase
+  static Future<List<Map<String, dynamic>>> getFavorites(String userId) async {
+    final querySnapshot = await _db
+        .collection('favorites')
+        .where('user_id', isEqualTo: userId)
+        .get();
 
-    final db = await DatabaseHelper.instance.database;
-
-    return await db.query(
-      'favorites',
-      where: 'user_id = ?',
-      whereArgs: [userId],
-    );
+    return querySnapshot.docs.map((doc) {
+      Map<String, dynamic> data = doc.data();
+      data['id'] = doc.id; // Lưu ID document nếu cần xóa sau này
+      return data;
+    }).toList();
   }
 
-  /// xóa yêu thích
-  static Future<void> removeFavorite(String mealId) async {
+  /// 3. Xóa yêu thích (Dựa trên mealId và userId để chính xác)
+  static Future<void> removeFavorite(String userId, String mealId) async {
+    final snapshot = await _db
+        .collection('favorites')
+        .where('user_id', isEqualTo: userId)
+        .where('meal_id', isEqualTo: mealId)
+        .get();
 
-    final db = await DatabaseHelper.instance.database;
-
-    await db.delete(
-      'favorites',
-      where: 'meal_id = ?',
-      whereArgs: [mealId],
-    );
+    for (var doc in snapshot.docs) {
+      await doc.reference.delete();
+    }
   }
 
-  /// xóa TẤT CẢ yêu thích của 1 user
-  static Future<void> removeAllFavorites(int userId) async {
-    final db = await DatabaseHelper.instance.database;
-    await db.delete(
-      'favorites',
-      where: 'user_id = ?',
-      whereArgs: [userId],
-    );
+  /// 4. Xóa TẤT CẢ yêu thích của 1 user
+  static Future<void> removeAllFavorites(String userId) async {
+    final snapshot = await _db
+        .collection('favorites')
+        .where('user_id', isEqualTo: userId)
+        .get();
+
+    for (var doc in snapshot.docs) {
+      await doc.reference.delete();
+    }
   }
 
-  /// kiểm tra đã favorite chưa
-  static Future<bool> isFavorite(String mealId) async {
+  /// 5. Kiểm tra món này đã nằm trong danh sách yêu thích của User chưa
+  static Future<bool> isFavorite(String userId, String mealId) async {
+    final result = await _db
+        .collection('favorites')
+        .where('user_id', isEqualTo: userId)
+        .where('meal_id', isEqualTo: mealId)
+        .limit(1)
+        .get();
 
-    final db = await DatabaseHelper.instance.database;
-
-    final result = await db.query(
-      'favorites',
-      where: 'meal_id = ?',
-      whereArgs: [mealId],
-    );
-
-    return result.isNotEmpty;
+    return result.docs.isNotEmpty;
   }
 }

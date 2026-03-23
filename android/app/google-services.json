@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "111521812916",
+    "firebase_url": "https://doanapp-dcf3e-default-rtdb.firebaseio.com",
+    "project_id": "doanapp-dcf3e",
+    "storage_bucket": "doanapp-dcf3e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:111521812916:android:9415f84ab796991702e2e1",
+        "android_client_info": {
+          "package_name": "com.example.doanapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCukECx3yWVedW_wLNdP2dnv9L062dy_GM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

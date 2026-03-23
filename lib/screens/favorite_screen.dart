@@ -4,7 +4,6 @@ import '../services/auth_service.dart';
 
 class FavoriteScreen extends StatefulWidget {
   final Function(String)? onMealTap;
-  // khi thay đổi yêu thích, sẽ gọi callback này để thông báo ra ngoài 
   final VoidCallback? onFavoritesChanged; 
 
   const FavoriteScreen({super.key, this.onMealTap, this.onFavoritesChanged});
@@ -15,7 +14,9 @@ class FavoriteScreen extends StatefulWidget {
 
 class FavoriteScreenState extends State<FavoriteScreen> {
   List favorites = [];
-  int get currentUserId => AuthService.currentUser?['id'] ?? 0;
+
+  // SỬA: Lấy ID dạng String từ AuthService
+  String? get currentUserId => AuthService.currentUser?['id']?.toString();
 
   @override
   void initState() {
@@ -28,9 +29,10 @@ class FavoriteScreenState extends State<FavoriteScreen> {
   }
 
   void loadFavorites() async {
-    if (currentUserId == 0) return; 
+    // SỬA: Kiểm tra null thay vì so sánh với 0
+    if (currentUserId == null) return; 
 
-    final data = await FavoriteService.getFavorites(currentUserId);
+    final data = await FavoriteService.getFavorites(currentUserId!);
     
     if (!mounted) return;
     setState(() {
@@ -38,18 +40,18 @@ class FavoriteScreenState extends State<FavoriteScreen> {
     });
   }
 
-  // Hàm xử lý xóa 1 món
+  // SỬA: Firebase cần cả UserId và MealId để xóa đúng bản ghi
   void _removeFavorite(String mealId) async {
-    await FavoriteService.removeFavorite(mealId);
-    loadFavorites(); // Cập nhật lại list ở màn hình này
+    if (currentUserId == null) return;
 
-   
+    await FavoriteService.removeFavorite(currentUserId!, mealId);
+    loadFavorites(); 
+
     if (widget.onFavoritesChanged != null) {
       widget.onFavoritesChanged!(); 
     }
   }
 
-  // Hàm xử lý xóa tất cả có cảnh báo
   void _removeAllFavorites() {
     showDialog(
       context: context,
@@ -64,12 +66,13 @@ class FavoriteScreenState extends State<FavoriteScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              await FavoriteService.removeAllFavorites(currentUserId);
-              loadFavorites(); // Cập nhật lại list ở màn hình này 
+              if (currentUserId != null) {
+                await FavoriteService.removeAllFavorites(currentUserId!);
+                loadFavorites(); 
 
-
-              if (widget.onFavoritesChanged != null) {
-                widget.onFavoritesChanged!(); 
+                if (widget.onFavoritesChanged != null) {
+                  widget.onFavoritesChanged!(); 
+                }
               }
             },
             child: const Text("Xóa", style: TextStyle(color: Colors.red)),
@@ -94,7 +97,7 @@ class FavoriteScreenState extends State<FavoriteScreen> {
             )
         ],
       ),
-      body: currentUserId == 0 
+      body: currentUserId == null 
           ? const Center(
               child: Text("Vui lòng đăng nhập để xem món yêu thích"),
             )
@@ -145,10 +148,12 @@ class FavoriteScreenState extends State<FavoriteScreen> {
                               borderRadius: const BorderRadius.vertical(
                                   top: Radius.circular(20)),
                               child: Image.network(
-                                meal["meal_thumb"],
+                                meal["meal_thumb"] ?? "",
                                 height: 120,
                                 width: double.infinity,
                                 fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => 
+                                  const Icon(Icons.broken_image, size: 50),
                               ),
                             ),
                             Positioned(
@@ -175,7 +180,7 @@ class FavoriteScreenState extends State<FavoriteScreen> {
                         Padding(
                           padding: const EdgeInsets.all(10),
                           child: Text(
-                            meal["meal_name"],
+                            meal["meal_name"] ?? "Món ăn",
                             style: const TextStyle(fontWeight: FontWeight.bold),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,

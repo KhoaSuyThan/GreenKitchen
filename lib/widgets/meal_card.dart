@@ -1,7 +1,7 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import '../services/favorite_service.dart';
+import '../services/auth_service.dart';
 
 class MealCard extends StatefulWidget {
   final dynamic meal;
@@ -25,16 +25,22 @@ class _MealCardState extends State<MealCard> {
   @override
   void initState() {
     super.initState();
-    _checkFavoriteStatus(); // Kiểm tra trạng thái ngay khi hiện card
+    _checkFavoriteStatus();
   }
 
-  // Hàm kiểm tra trong DB
   void _checkFavoriteStatus() async {
-    bool favorited = await FavoriteService.isFavorite(widget.meal["idMeal"]);
-    if (mounted) {
-      setState(() {
-        isFavorite = favorited;
-      });
+    final user = AuthService.currentUser;
+    if (user != null) {
+      // Lấy ID linh hoạt (id từ Firestore hoặc idMeal từ API)
+      final String mealId = (widget.meal["id"] ?? widget.meal["idMeal"] ?? "").toString();
+      
+      if (mealId.isNotEmpty) {
+        bool favorited = await FavoriteService.isFavorite(
+          user['id'].toString(), 
+          mealId
+        );
+        if (mounted) setState(() => isFavorite = favorited);
+      }
     }
   }
 
@@ -42,83 +48,75 @@ class _MealCardState extends State<MealCard> {
   Widget build(BuildContext context) {
     final meal = widget.meal;
 
+    // --- LOGIC MAP DỮ LIỆU TỪ 2 NGUỒN ---
+    final bool isFromFirestore = meal['image_path'] != null; 
+    final String title = (isFromFirestore ? meal['title'] : meal['strMeal']) ?? "Không có tên";
+    final String imageUrl = (isFromFirestore ? meal['image_path'] : meal['strMealThumb']) ?? "";
+    final String mealId = (meal["id"] ?? meal["idMeal"] ?? "").toString();
+    final String area = isFromFirestore ? "Cộng đồng" : (meal["strArea"] ?? "Quốc tế");
+
     return GestureDetector(
       onTap: widget.onTap,
-
       child: Container(
-        margin: const EdgeInsets.only(bottom: 18),
-
+        margin: const EdgeInsets.only(bottom: 18, left: 16, right: 16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 15,
-              offset: const Offset(0, 10),
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// IMAGE
+            /// 1. PHẦN HÌNH ẢNH (Xử lý link ngoài)
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: meal['isLocal'] == true
-                      ? Image.file(
-                          File(meal['strMealThumb']),
-                          fit: BoxFit.cover,
-                        ) // Ảnh từ SQLite (file máy)
-                      : Image.network(
-                          meal['strMealThumb'],
-                          fit: BoxFit.cover,
-                        ), // Ảnh từ API (link web)
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  child: _buildImageWidget(imageUrl),
                 ),
 
-                /// FAVORITE
+                /// NÚT YÊU THÍCH
                 Positioned(
-                  top: 10,
-                  right: 10,
+                  top: 12,
+                  right: 12,
                   child: GestureDetector(
                     onTap: () async {
-                      final meal = widget.meal;
+                      final user = AuthService.currentUser;
+                      if (user == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Vui lòng đăng nhập!")),
+                        );
+                        return;
+                      }
 
-                      setState(() {
-                        isFavorite = !isFavorite;
-                      });
+                      setState(() => isFavorite = !isFavorite);
 
                       if (isFavorite) {
                         await FavoriteService.addFavorite(
-                          1,
-                          meal["idMeal"],
-                          meal["strMeal"],
-                          meal["strMealThumb"],
+                          user['id'].toString(),
+                          mealId,
+                          title,
+                          imageUrl,
                         );
                       } else {
-                        await FavoriteService.removeFavorite(meal["idMeal"]);
+                        await FavoriteService.removeFavorite(
+                          user['id'].toString(), 
+                          mealId
+                        );
                       }
                     },
-
                     child: Container(
-                      padding: const EdgeInsets.all(6),
-
-                      decoration: BoxDecoration(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 6,
-                          ),
-                        ],
                       ),
-
                       child: Icon(
                         isFavorite ? Icons.favorite : Icons.favorite_border,
                         color: Colors.red,
@@ -130,47 +128,26 @@ class _MealCardState extends State<MealCard> {
               ],
             ),
 
-            /// INFO
+            /// 2. PHẦN THÔNG TIN
             Padding(
-              padding: const EdgeInsets.all(14),
-
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  /// NAME
                   Text(
-                    meal["strMeal"],
-                    //   maxLines: 1,
-                    //  overflow: TextOverflow.ellipsis,
-                    softWrap: true,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-
                   const SizedBox(height: 6),
-
-                  /// ORIGIN
                   Row(
                     children: [
-                      const Icon(
-                        Icons.location_on,
-                        size: 16,
-                        color: Colors.grey,
-                      ),
-
+                      const Icon(Icons.public, size: 14, color: Colors.orange),
                       const SizedBox(width: 4),
-
                       Text(
-                        
-                        meal['isLocal'] == true 
-                            ? "Cộng đồng" 
-                            : (meal["strArea"]?.toString() ?? "Quốc tế"),
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                        ),
+                        area,
+                        style: const TextStyle(color: Colors.grey, fontSize: 13),
                       ),
                     ],
                   ),
@@ -180,6 +157,53 @@ class _MealCardState extends State<MealCard> {
           ],
         ),
       ),
+    );
+  }
+
+  /// HÀM HIỂN THỊ ẢNH THÔNG MINH (Link ngoài & Local)
+  Widget _buildImageWidget(String path) {
+    if (path.isEmpty) return _buildErrorPlaceholder();
+
+    // Nếu là Link URL ngoài (Bắt đầu bằng http)
+    if (path.startsWith('http')) {
+      return Image.network(
+        path,
+        width: double.infinity,
+        height: 200,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            height: 200,
+            color: Colors.grey[100],
+            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) => _buildErrorPlaceholder(),
+      );
+    } 
+    
+    // Nếu là đường dẫn File trong máy (Dành cho ảnh vừa chụp)
+    final file = File(path);
+    if (file.existsSync()) {
+      return Image.file(
+        file,
+        width: double.infinity,
+        height: 200,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _buildErrorPlaceholder(),
+      );
+    }
+
+    return _buildErrorPlaceholder();
+  }
+
+  Widget _buildErrorPlaceholder() {
+    return Container(
+      width: double.infinity,
+      height: 200,
+      color: Colors.grey[200],
+      child: const Icon(Icons.broken_image_outlined, size: 40, color: Colors.grey),
     );
   }
 }

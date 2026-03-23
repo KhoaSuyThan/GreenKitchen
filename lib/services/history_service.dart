@@ -1,48 +1,99 @@
-import '../database/database_helper.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HistoryService {
-  // Lưu lịch sử (Nếu món đó đã xem rồi thì xóa cũ thêm mới để đẩy lên đầu)
-  static Future<void> addHistory(int userId, Map<String, dynamic> meal) async {
-    final db = await DatabaseHelper.instance.database;
+  static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-    // Xóa nếu đã tồn tại để tránh trùng
-    await db.delete('viewed_history', where: 'user_id = ? AND meal_id = ?', whereArgs: [userId, meal['idMeal']]);
+  // ==========================================
+  // 1. LƯU LỊCH SỬ (Cập nhật nếu đã tồn tại)
+  // ==========================================
+  static Future<void> addHistory(String userId, Map<String, dynamic> meal) async {
+    try {
+      // Tìm xem món này đã có trong lịch sử của User này chưa
+      final query = await _db
+          .collection('viewed_history')
+          .where('user_id', isEqualTo: userId)
+          .where('meal_id', isEqualTo: meal['idMeal'])
+          .limit(1)
+          .get();
 
-    await db.insert('viewed_history', {
-      'user_id': userId,
-      'meal_id': meal['idMeal'],
-      'meal_name': meal['strMeal'],
-      'meal_thumb': meal['strMealThumb'],
-    });
+      if (query.docs.isNotEmpty) {
+        // ✅ Đã tồn tại -> Cập nhật thời gian xem mới nhất để đẩy lên đầu
+        await query.docs.first.reference.update({
+          'viewed_at': FieldValue.serverTimestamp(),
+        });
+      } else {
+        // ✅ Chưa có -> Thêm mới bản ghi
+        await _db.collection('viewed_history').add({
+          'user_id': userId,
+          'meal_id': meal['idMeal'],
+          'meal_name': meal['strMeal'],
+          'meal_thumb': meal['strMealThumb'],
+          'viewed_at': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      print("Lỗi lưu lịch sử: $e");
+    }
   }
 
-  static Future<List<Map<String, dynamic>>> getHistory(int userId) async {
-    final db = await DatabaseHelper.instance.database;
-    // Sắp xếp ID DESC để món mới xem hiện lên đầu
-    return await db.query(
-        'viewed_history',
-        where: 'user_id = ?',
-        whereArgs: [userId],
-        orderBy: 'id DESC'
-    );
+  // ==========================================
+  // 2. LẤY LỊCH SỬ (Sắp xếp tại Client để tránh lỗi Index)
+  // ==========================================
+  static Future<List<Map<String, dynamic>>> getHistory(String userId) async {
+    try {
+      final snapshot = await _db
+          .collection('viewed_history')
+          .where('user_id', isEqualTo: userId)
+          .get();
+
+      List<Map<String, dynamic>> list = snapshot.docs.map((doc) {
+        Map<String, dynamic> data = doc.data();
+        data['id'] = doc.id; // Lưu ID document để xóa
+        return data;
+      }).toList();
+
+      // ✅ Sắp xếp tại Client: Món mới xem (viewed_at lớn nhất) lên đầu
+      list.sort((a, b) {
+        final aTime = (a['viewed_at'] as Timestamp?)?.toDate() ?? DateTime(2000);
+        final bTime = (b['viewed_at'] as Timestamp?)?.toDate() ?? DateTime(2000);
+        return bTime.compareTo(aTime);
+      });
+
+      return list;
+    } catch (e) {
+      print("Lỗi getHistory: $e");
+      return [];
+    }
   }
 
-  static Future<int> deleteHistoryItem(int id) async {
-    final db = await DatabaseHelper.instance.database;
-    return await db.delete(
-      'viewed_history',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+  // ==========================================
+  // 3. XÓA 1 MỤC LỊCH SỬ
+  // ==========================================
+  static Future<void> deleteHistoryItem(String id) async {
+    try {
+      await _db.collection('viewed_history').doc(id).delete();
+    } catch (e) {
+      print("Lỗi deleteHistoryItem: $e");
+    }
   }
 
-  // 2. Xóa toàn bộ lịch sử của một người dùng
-  static Future<int> clearAllHistory(int userId) async {
-    final db = await DatabaseHelper.instance.database;
-    return await db.delete(
-      'viewed_history',
-      where: 'user_id = ?',
-      whereArgs: [userId],
-    );
+  // ==========================================
+  // 4. XÓA TẤT CẢ LỊCH SỬ CỦA USER
+  // ==========================================
+  static Future<void> clearAllHistory(String userId) async {
+    try {
+      final snapshot = await _db
+          .collection('viewed_history')
+          .where('user_id', isEqualTo: userId)
+          .get();
+
+      final batch = _db.batch();
+      for (var doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    } catch (e) {
+      print("Lỗi clearAllHistory: $e");
+    }
   }
 }
