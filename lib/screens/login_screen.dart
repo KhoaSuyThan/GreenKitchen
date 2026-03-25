@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
-import '../database/database_helper.dart';
+// ĐỔI: Dùng FirebaseService thay vì DatabaseHelper
+import '../database/firebase_service.dart'; 
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,8 +15,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false; // Thêm biến loading để trải nghiệm tốt hơn
 
-  // --- CẬP NHẬT LOGIC ĐĂNG NHẬP (ĐÃ FIX LỖI) ---
   void _handleLogin() async {
     final email = _emailController.text.trim();
     final pass = _passwordController.text.trim();
@@ -27,87 +28,95 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // 1. Thực hiện đăng nhập qua Service
-    bool success = await AuthService.login(email, pass);
+    setState(() => _isLoading = true);
 
-    if (success) {
-      // Kiểm tra mounted trước khi sử dụng context sau await
-      if (!mounted) return;
+    try {
+      // 1. Thực hiện đăng nhập qua AuthService (Service này sẽ gọi FirebaseService.login)
+      bool success = await AuthService.login(email, pass);
 
-      // Lấy thông tin User (Lưu ý: user ở đây là một Map<String, dynamic>)
-      final user = AuthService.currentUser;
+      if (success) {
+        if (!mounted) return;
 
-      // 2. CHỈ CHECK THÔNG BÁO NẾU LÀ USER BÌNH THƯỜNG
-      // FIX: Dùng user['role'] thay vì user.role
-      if (user != null && user['role'] == 'user') {
-        
-        // FIX: Dùng user['id'] thay vì user.id
-        final int userId = user['id'];
+        final user = AuthService.currentUser;
 
-        // Lấy danh sách các bài vừa được Admin Duyệt/Từ chối mà chưa xem
-        List<Map<String, dynamic>> notifications = 
-            await DatabaseHelper.instance.getUnreadNotifications(userId);
+        // 2. KIỂM TRA THÔNG BÁO NẾU LÀ USER
+        if (user != null && user['role'] == 'user') {
+          // ĐỔI: ID của Firebase là String
+          final String userId = user['id'].toString();
 
-        if (notifications.isNotEmpty && mounted) {
-          // 3. HIỂN THỊ DIALOG THÔNG BÁO TÊN MÓN ĂN
-          await showDialog(
-            context: context,
-            barrierDismissible: false, 
-            builder: (context) => AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: const Row(
-                children: [
-                  Icon(Icons.notifications_active, color: Color(0xFF2E7D32)),
-                  SizedBox(width: 10),
-                  Text("Thông báo mới", style: TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.bold)),
+          // Lấy danh sách thông báo từ Firestore
+          List<Map<String, dynamic>> notifications = 
+              await FirebaseService.instance.getUnreadNotifications(userId);
+
+          if (notifications.isNotEmpty && mounted) {
+            // 3. HIỂN THỊ DIALOG THÔNG BÁO
+            await showDialog(
+              context: context,
+              barrierDismissible: false, 
+              builder: (context) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                title: const Row(
+                  children: [
+                    Icon(Icons.notifications_active, color: Color(0xFF2E7D32)),
+                    SizedBox(width: 10),
+                    Text("Thông báo mới", style: TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                content: SizedBox(
+                  width: double.maxFinite,
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: notifications.length,
+                    itemBuilder: (context, index) {
+                      final item = notifications[index];
+                      String statusText = item['status'] == 'approved' ? "đã được DUYỆT" : "bị TỪ CHỐI";
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Text(
+                          "• Món '${item['title']}' của bạn $statusText.",
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () async {
+                      // 4. Đánh dấu đã xem trên Firestore
+                      await FirebaseService.instance.markAsNotified(userId);
+                      if (context.mounted) Navigator.pop(context);
+                    },
+                    child: const Text("Xác nhận", style: TextStyle(color: Color(0xFF81C784), fontWeight: FontWeight.bold)),
+                  ),
                 ],
               ),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: notifications.length,
-                  itemBuilder: (context, index) {
-                    final item = notifications[index];
-                    String statusText = item['status'] == 'approved' ? "đã được DUYỆT" : "bị TỪ CHỐI";
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Text(
-                        "• Món '${item['title']}' của bạn $statusText.",
-                        style: const TextStyle(fontSize: 15),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () async {
-                    // 4. Đánh dấu đã xem để lần sau login không hiện lại
-                    await DatabaseHelper.instance.markAsNotified(userId);
-                    if (context.mounted) Navigator.pop(context); // Đóng Dialog
-                  },
-                  child: const Text("Xác nhận", style: TextStyle(color: Color(0xFF81C784), fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
+            );
+          }
+        }
+
+        // 5. CHUYỂN VÀO HOMESCREEN
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Sai email hoặc mật khẩu!")),
           );
         }
       }
-
-      // 5. CHUYỂN VÀO HOMESCREEN (Kiểm tra mounted lần cuối)
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-      }
-    } else {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Sai email hoặc mật khẩu!")),
+          SnackBar(content: Text("Lỗi hệ thống: $e")),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -139,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: TextField(
                   controller: _emailController,
                   decoration: const InputDecoration(
-                    hintText: "Email",
+                    hintText: "Email/Username",
                     prefixIcon: Icon(Icons.email_outlined, color: Color(0xFF81C784)),
                     border: InputBorder.none,
                   ),
@@ -162,17 +171,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: _handleLogin,
+                  onPressed: _isLoading ? null : _handleLogin,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF81C784),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
                     ),
                   ),
-                  child: const Text(
-                    "Đăng nhập",
-                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  child: _isLoading 
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        "Đăng nhập",
+                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
                 ),
               ),
               const SizedBox(height: 20),

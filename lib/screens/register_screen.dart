@@ -12,8 +12,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false; // Thêm trạng thái chờ
 
-  // --- GIỮ NGUYÊN CODE CHÍNH CỦA KHOA ---
   void _handleRegister() async {
     final name = _usernameController.text.trim();
     final email = _emailController.text.trim();
@@ -26,21 +26,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    final id = await AuthService.register(name, email, pass);
-    if (id > 0) {
+    setState(() => _isLoading = true); // Bắt đầu load
+
+    try {
+      // Gọi AuthService để đăng ký tài khoản lên Firestore
+      // Chúng ta không dùng ID int nữa mà dùng kết quả thành công/thất bại
+      await AuthService.register(name, email, pass);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Đăng ký thành công! Hãy đăng nhập.")),
         );
         Navigator.pop(context); // Quay lại trang Login
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Lỗi đăng ký: ${e.toString()}")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false); // Tắt load
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F8E9), // Nền xanh nhạt đồng bộ
+      backgroundColor: const Color(0xFFF1F8E9),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -51,7 +64,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 30),
           child: Column(
             children: [
-              // Header nhẹ nhàng
               const Icon(Icons.person_add_rounded, size: 70, color: Color(0xFF81C784)),
               const SizedBox(height: 16),
               const Text(
@@ -68,11 +80,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 40),
 
-              // Ô nhập Tên người dùng
               _buildInputWrapper(
                 child: TextField(
                   controller: _usernameController,
-                  keyboardType: TextInputType.text,
                   decoration: const InputDecoration(
                     hintText: "Tên người dùng",
                     prefixIcon: Icon(Icons.person_outline, color: Color(0xFF81C784)),
@@ -82,7 +92,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Ô nhập Email
               _buildInputWrapper(
                 child: TextField(
                   controller: _emailController,
@@ -95,7 +104,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Ô nhập Mật khẩu
               _buildInputWrapper(
                 child: TextField(
                   controller: _passwordController,
@@ -109,27 +117,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 30),
 
-              // Nút Đăng ký
               SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: _handleRegister,
+                  onPressed: _isLoading ? null : _handleRegister,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF81C784),
-                    elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
                     ),
                   ),
-                  child: const Text(
-                    "Đăng ký",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold
-                    ),
-                  ),
+                  child: _isLoading 
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        "Đăng ký",
+                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -140,7 +144,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // Widget wrapper để đồng bộ UI với trang Login
   Widget _buildInputWrapper({required Widget child}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),

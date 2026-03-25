@@ -1,7 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
-
+import 'package:cached_network_image/cached_network_image.dart'; // Dùng để load ảnh từ URL mượt hơn
+import '../database/firebase_service.dart'; // Đổi từ DatabaseHelper
 import 'recipe_details_screen.dart'; 
 
 class AdminApprovalScreen extends StatefulWidget {
@@ -12,29 +11,30 @@ class AdminApprovalScreen extends StatefulWidget {
 }
 
 class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
-  // Hàm tải danh sách bài đang chờ
+  // 1. Hàm tải danh sách bài đang chờ từ Firebase
   Future<List<Map<String, dynamic>>> _getPending() async {
-    return await DatabaseHelper.instance.getPendingRecipes();
+    return await FirebaseService.instance.getPendingRecipes();
   }
 
-  // Hàm xử lý khi Admin bấm Duyệt
-  void _approve(int id) async {
-    await DatabaseHelper.instance.updateRecipeStatus(id, 'approved');
+  // 2. Hàm xử lý Duyệt (Dùng String ID)
+  void _approve(String id) async {
+    await FirebaseService.instance.updateRecipeStatus(id, 'approved');
     setState(() {}); // Load lại giao diện
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Đã duyệt món ăn!"))
+        const SnackBar(content: Text("🔥 Đã duyệt món ăn lên hệ thống!"))
       );
     }
   }
 
-  // Hàm xử lý khi Admin bấm Xóa/Từ chối
-  void _reject(int id) async {
-    await DatabaseHelper.instance.updateRecipeStatus(id, 'rejected'); 
-    setState(() {}); // Load lại giao diện
+  // 3. Hàm xử lý Từ chối (Dùng String ID)
+  void _reject(String id) async {
+    // Bạn có thể chọn delete hẳn hoặc đổi status sang 'rejected'
+    await FirebaseService.instance.updateRecipeStatus(id, 'rejected'); 
+    setState(() {}); 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Đã từ chối và xóa bài."))
+        const SnackBar(content: Text("❌ Đã từ chối bài viết này."))
       );
     }
   }
@@ -43,34 +43,32 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Duyệt bài (Admin)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text("Duyệt bài (Firebase Admin)", 
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.orange,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _getPending(),
         builder: (context, snapshot) {
-          // 1. Đang tải dữ liệu
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator(color: Colors.orange));
           }
 
-          // 2. Nếu không có dữ liệu hoặc danh sách rỗng
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.inbox_rounded, size: 80, color: Colors.grey),
+                  Icon(Icons.auto_awesome, size: 80, color: Colors.grey),
                   SizedBox(height: 10),
-                  Text("Hiện không có món ăn nào cần duyệt.", 
+                  Text("Sạch sẽ! Không còn bài nào cần duyệt.", 
                     style: TextStyle(color: Colors.grey, fontSize: 16)),
                 ],
               ),
             );
           }
 
-          // 3. Có dữ liệu -> Hiển thị danh sách thật
           final recipes = snapshot.data!;
           return ListView.separated(
             padding: const EdgeInsets.symmetric(vertical: 10),
@@ -78,47 +76,53 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
             separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final item = recipes[index];
+              // Firestore ID là String
+              final String docId = item['id']; 
+
               return ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 leading: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: item['image_path'] != null 
-                    ? Image.file(File(item['image_path']), width: 60, height: 60, fit: BoxFit.cover)
+                  // ĐỔI: Dùng CachedNetworkImage vì image_path giờ là URL Firebase
+                  child: item['image_path'] != null && item['image_path'].toString().startsWith('http')
+                    ? CachedNetworkImage(
+                        imageUrl: item['image_path'],
+                        width: 60, height: 60, fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(color: Colors.grey[300]),
+                        errorWidget: (context, url, error) => const Icon(Icons.error),
+                      )
                     : Container(
-                        width: 60, height: 60, color: Colors.grey, 
-                        child: Icon(Icons.fastfood, color: Colors.white)
+                        width: 60, height: 60, color: Colors.grey[300], 
+                        child: const Icon(Icons.fastfood, color: Colors.white)
                       ),
                 ),
                 title: Text(
                   item['title'] ?? "Không tên", 
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
                 ),
-                subtitle: Text("Người đăng: ${item['username'] ?? "Ẩn danh"}"),
+                subtitle: Text("Người đăng: ${item['username'] ?? "User mới"}"),
                 
-                // --- ĐOẠN QUAN TRỌNG: MỞ XEM CHI TIẾT CÔNG THỨC ---
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => RecipeDetailScreen(
-                        // Truyền ID món ăn sang (phải là String)
-                        mealId: item['id'].toString(), 
+                        mealId: docId, // Đã là String
                       ),
                     ),
-                  ).then((_) => setState(() {})); // Reload lại danh sách sau khi quay về (nếu cần)
+                  ).then((_) => setState(() {})); 
                 },
-                // --------------------------------------------------
 
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.check_circle_outline, color: Colors.green, size: 28),
-                      onPressed: () => _approve(item['id']),
+                      icon: const Icon(Icons.check_circle, color: Colors.green, size: 30),
+                      onPressed: () => _approve(docId),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red, size: 28),
-                      onPressed: () => _reject(item['id']),
+                      icon: const Icon(Icons.cancel, color: Colors.red, size: 30),
+                      onPressed: () => _reject(docId),
                     ),
                   ],
                 ),

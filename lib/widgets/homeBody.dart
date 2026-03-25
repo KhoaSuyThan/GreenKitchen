@@ -6,8 +6,7 @@ import '../models/category_model.dart';
 import '../services/api_service.dart';
 import '../widgets/meal_card.dart';
 import '../screens/all_meals_screen.dart';
-// THÊM: Import DatabaseHelper để lấy món từ SQLite
-import '../database/database_helper.dart';
+import '../database/firebase_service.dart';
 
 class HomeBody extends StatefulWidget {
   final Function(String) onMealTap;
@@ -25,7 +24,7 @@ class _HomeBodyState extends State<HomeBody> {
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
 
-  final int popularLimit = 6; // Tăng nhẹ limit để hiện được cả món cộng đồng
+  final int popularLimit = 6; 
 
   @override
   void initState() {
@@ -40,74 +39,83 @@ class _HomeBodyState extends State<HomeBody> {
     super.dispose();
   }
 
-  // CẬP NHẬT: Hàm tải món ăn kết hợp cả API và SQLite
   void loadDefaultMeals() async {
     if (!mounted) return;
-
     setState(() => isLoading = true);
 
-    // 1. Lấy dữ liệu từ API (Vietnamese Meals)
-    var apiData = await ApiService.fetchVietnameseMeals() ?? [];
-    
-    // 2. Lấy dữ liệu từ SQLite (Các bài đã được Admin duyệt)
-    var localData = await DatabaseHelper.instance.getApprovedRecipes();
+    try {
+      // Chạy song song cả API và Firebase để tối ưu tốc độ
+      final results = await Future.wait([
+        ApiService.fetchVietnameseMeals(),
+        FirebaseService.instance.getApprovedRecipes(),
+      ]);
 
-    // 3. Chuẩn hóa dữ liệu SQLite sang format của API để MealCard dùng chung được
-    List<Map<String, dynamic>> formattedLocalData = localData.map((item) {
-      return {
-        "idMeal": item['id'].toString(), 
-        "strMeal": item['title'],
-        "strMealThumb": item['image_path'], // Đây là đường dẫn file trong máy
-        "strArea": "Cộng đồng",             // Dùng để hiển thị Badge
-        "isLocal": true,                   // Cờ hiệu nhận biết món từ User
-      };
-    }).toList();
+      final List apiData = (results[0] as List?) ?? [];
+      final List firebaseData = (results[1] as List?) ?? [];
 
-    if (mounted) {
-      setState(() {
-        // Gộp lại: Ưu tiên hiển thị món cộng đồng lên trước
-        meals = [...formattedLocalData, ...apiData];
-        isLoading = false;
-      });
-    }
-  }
-
-  // CẬP NHẬT: Tìm kiếm trên cả 2 nguồn
-  void onSearchChanged(String query) {
-    if (_debounce?.isActive ?? false) {
-      _debounce!.cancel();
-    }
-
-    _debounce = Timer(const Duration(milliseconds: 600), () async {
-      if (query.isEmpty) {
-        loadDefaultMeals();
-        return;
-      }
-
-      if (mounted) {
-        setState(() => isLoading = true);
-      }
-
-      // Tìm trên API
-      var apiResults = await ApiService.searchMeals(query) ?? [];
-      
-      // Tìm trên Local (SQLite)
-      var allLocal = await DatabaseHelper.instance.getApprovedRecipes();
-      var localResults = allLocal.where((m) => 
-        m['title'].toString().toLowerCase().contains(query.toLowerCase())
-      ).map((item) => {
-        "idMeal": item['id'].toString(),
-        "strMeal": item['title'],
-        "strMealThumb": item['image_path'],
-        "strArea": "Cộng đồng",
-        "isLocal": true,
+      List<Map<String, dynamic>> formattedFirebaseData = firebaseData.map((item) {
+        return {
+          "idMeal": item['id'].toString(),
+          "strMeal": item['title'] ?? "Món ăn cộng đồng",
+          "strMealThumb": item['image_path'] ?? "", 
+          "strArea": "Cộng đồng", 
+          "isLocal": true, 
+        };
       }).toList();
 
       if (mounted) {
         setState(() {
-          meals = [...localResults, ...apiResults];
+          meals = [...formattedFirebaseData, ...apiData];
           isLoading = false;
         });
+      }
+    } catch (e) {
+      debugPrint("Lỗi load trang chủ: $e");
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  void onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    _debounce = Timer(const Duration(milliseconds: 600), () async {
+      // SỬA LỖI: Kiểm tra query trống chính xác hơn và thoát hàm sớm
+      final cleanQuery = query.trim();
+      if (cleanQuery.isEmpty) {
+        loadDefaultMeals();
+        return; // Dừng lại, không chạy code search bên dưới
+      }
+
+      if (mounted) setState(() => isLoading = true);
+
+      try {
+        final searchResults = await Future.wait([
+          ApiService.searchMeals(cleanQuery),
+          FirebaseService.instance.getApprovedRecipes(),
+        ]);
+
+        final List apiResults = (searchResults[0] as List?) ?? [];
+        final List allApproved = (searchResults[1] as List?) ?? [];
+
+        final filteredCloud = allApproved.where((m) => 
+          m['title'].toString().toLowerCase().contains(cleanQuery.toLowerCase())
+        ).map((item) => {
+          "idMeal": item['id'].toString(),
+          "strMeal": item['title'] ?? "Không tên",
+          "strMealThumb": item['image_path'] ?? "",
+          "strArea": "Cộng đồng",
+          "isLocal": true,
+        }).toList();
+
+        if (mounted) {
+          setState(() {
+            meals = [...filteredCloud, ...apiResults];
+            isLoading = false;
+          });
+        }
+      } catch (e) {
+        debugPrint("Lỗi tìm kiếm: $e");
+        if (mounted) setState(() => isLoading = false);
       }
     });
   }
@@ -118,7 +126,6 @@ class _HomeBodyState extends State<HomeBody> {
       child: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          /// HEADER (Giữ nguyên cấu trúc của bạn)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -132,10 +139,8 @@ class _HomeBodyState extends State<HomeBody> {
                   _buildCategoryList(),
                   const SizedBox(height: 30),
                   _buildSectionHeader(
-                    _searchController.text.isEmpty
-                        ? "Món ăn phổ biến"
-                        : "Kết quả tìm kiếm",
-                    onTap: () {
+                    _searchController.text.isEmpty ? "Món ăn phổ biến" : "Kết quả tìm kiếm",
+                    onTap: meals.isEmpty ? null : () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -152,19 +157,16 @@ class _HomeBodyState extends State<HomeBody> {
             ),
           ),
 
-          /// LOADING
           if (isLoading)
             const SliverFillRemaining(
-              child: Center(
-                child: CircularProgressIndicator(color: Colors.green),
-              ),
+              hasScrollBody: false, // SỬA LỖI: Tránh lỗi render trong sliver
+              child: Center(child: CircularProgressIndicator(color: Colors.green)),
             )
-          /// EMPTY
           else if (meals.isEmpty)
             const SliverFillRemaining(
+              hasScrollBody: false,
               child: Center(child: Text("Không tìm thấy món nào 😢")),
             )
-          /// MEALS (Giữ nguyên cấu trúc của bạn)
           else
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -174,16 +176,11 @@ class _HomeBodyState extends State<HomeBody> {
                     return MealCard(
                       meal: meals[index],
                       isHome: _searchController.text.isEmpty,
-                      onTap: () {
-                        // mealId đã được chuẩn hóa ở trên nên cứ truyền vào
-                        widget.onMealTap(meals[index]["idMeal"]);
-                      },
+                      onTap: () => widget.onMealTap(meals[index]["idMeal"]),
                     );
                   },
                   childCount: _searchController.text.isEmpty
-                      ? (meals.length > popularLimit
-                          ? popularLimit
-                          : meals.length)
+                      ? (meals.length > popularLimit ? popularLimit : meals.length)
                       : meals.length,
                 ),
               ),
@@ -195,7 +192,7 @@ class _HomeBodyState extends State<HomeBody> {
     );
   }
 
-  /// CÁC HÀM BUILD WIDGET PHỤ (Giữ nguyên 100% code của bạn)
+  // --- HÀM BUILD GIỮ NGUYÊN ---
   Widget _buildSearchBar() {
     return Container(
       decoration: BoxDecoration(
@@ -211,10 +208,7 @@ class _HomeBodyState extends State<HomeBody> {
       ),
       child: TextField(
         controller: _searchController,
-        onChanged: (value) {
-          setState(() {});
-          onSearchChanged(value);
-        },
+        onChanged: onSearchChanged,
         decoration: InputDecoration(
           hintText: "Tìm kiếm món ăn...",
           hintStyle: TextStyle(color: Colors.grey[400]),
@@ -240,22 +234,13 @@ class _HomeBodyState extends State<HomeBody> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          title,
-          style: GoogleFonts.beVietnamPro(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        Text(title, style: GoogleFonts.beVietnamPro(fontSize: 22, fontWeight: FontWeight.bold)),
         if (onTap != null)
           GestureDetector(
             onTap: onTap,
             child: const Row(
               children: [
-                Text(
-                  "Xem tất cả",
-                  style: TextStyle(color: Colors.green, fontSize: 13),
-                ),
+                Text("Xem tất cả", style: TextStyle(color: Colors.green, fontSize: 13)),
                 SizedBox(width: 4),
                 Icon(Icons.arrow_forward_ios, size: 12, color: Colors.green),
               ],
@@ -287,11 +272,7 @@ class _HomeBodyState extends State<HomeBody> {
                 color: cat.color,
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
+                  BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 6)),
                 ],
               ),
               child: Column(
@@ -299,13 +280,7 @@ class _HomeBodyState extends State<HomeBody> {
                 children: [
                   Text(cat.icon, style: const TextStyle(fontSize: 30)),
                   const SizedBox(height: 5),
-                  Text(
-                    cat.label,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                    ),
-                  ),
+                  Text(cat.label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
                 ],
               ),
             ),

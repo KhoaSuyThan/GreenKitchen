@@ -1,11 +1,11 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart'; // Dùng load ảnh URL
 import '../services/api_congthuc.dart';
 import '../services/auth_service.dart';
 import '../services/history_service.dart';
 import 'package:flutter/services.dart';
-// Import DatabaseHelper để lấy món ăn Local
-import '../database/database_helper.dart';
+// ĐỔI: Dùng FirebaseService thay vì DatabaseHelper
+import '../database/firebase_service.dart';
 
 class RecipeDetailScreen extends StatefulWidget {
   final String mealId;
@@ -21,7 +21,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   Map<String, dynamic>? recipeData;
   bool isLoading = true;
   String errorMessage = "";
-  bool isLocalMeal = false; // Cờ kiểm tra xem món ăn này có phải từ SQLite không
+  bool isFirebaseMeal = false; // Cờ kiểm tra món ăn từ Cloud
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -30,98 +30,77 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     _fetchRecipeDetail();
   }
 
-  @override
-  void didUpdateWidget(covariant RecipeDetailScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.mealId != oldWidget.mealId) {
-      setState(() {
-        isLoading = true;
-        recipeData = null;
-        isLocalMeal = false;
-      });
-      _fetchRecipeDetail();
-
-      if (_scrollController.hasClients) {
-        _scrollController.jumpTo(0);
-      }
-    }
-  }
-
+  // Hàm lấy chi tiết công thức
   Future<void> _fetchRecipeDetail() async {
     try {
-      // 1. KIỂM TRA SQLITE TRƯỚC (MÓN CỘNG ĐỒNG)
-      int? localId = int.tryParse(widget.mealId); // Nếu parse được sang số (ID nhỏ)
-      if (localId != null) {
-        final localData = await DatabaseHelper.instance.getRecipeById(localId);
-        
-        if (localData != null) {
-          if (mounted) {
-            setState(() {
-              // Chuyển đổi dữ liệu SQLite sang cấu trúc giống API để UI không bị lỗi
-              recipeData = {
-                'idMeal': localData['id'].toString(),
-                'nameVi': localData['title'],
-                'thumbnail': localData['image_path'],
-                // Món local nguyên liệu thường là 1 string dài, ta bọc nó vào List giống API
-                'ingredientsList': [
-                  {"original": localData['ingredients'], "translated": localData['ingredients']}
-                ],
-                'instructionsVi': localData['instructions'],
-              };
-              isLocalMeal = true;
-              isLoading = false;
-            });
-            _saveHistory(recipeData!); // Lưu lịch sử
-          }
-          return; // Dừng hàm lại, không gọi API nữa
+      // 1. KIỂM TRA FIREBASE TRƯỚC (Món ăn cộng đồng/do user đăng)
+      final fbData = await FirebaseService.instance.getRecipeById(widget.mealId);
+      
+      if (fbData != null) {
+        if (mounted) {
+          setState(() {
+            // Chuyển đổi cấu trúc Firestore sang cấu trúc UI chung
+            recipeData = {
+              'idMeal': fbData['id'],
+              'nameVi': fbData['title'],
+              'thumbnail': fbData['image_path'], // Đây là URL ảnh từ Storage
+              'ingredientsList': [
+                {"original": fbData['ingredients'], "translated": fbData['ingredients']}
+              ],
+              'instructionsVi': fbData['instructions'],
+            };
+            isFirebaseMeal = true;
+            isLoading = false;
+          });
+          _saveHistory(recipeData!);
         }
+        return; 
       }
 
-      // 2. NẾU KHÔNG CÓ TRONG SQLITE, GỌI API (MÓN QUỐC TẾ)
-      final data = await RecipeDetailService.getRecipeById(widget.mealId);
+      // 2. NẾU KHÔNG CÓ TRÊN FIREBASE, GỌI API (Món ăn quốc tế)
+      final apiData = await RecipeDetailService.getRecipeById(widget.mealId);
       if (mounted) {
         setState(() {
-          recipeData = data;
-          isLocalMeal = false;
+          recipeData = apiData;
+          isFirebaseMeal = false;
           isLoading = false;
         });
 
-        if (data != null) {
-          _saveHistory(data); // Lưu lịch sử
+        if (apiData != null) {
+          _saveHistory(apiData);
         }
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           isLoading = false;
-          errorMessage = "Không thể tải dữ liệu. Vui lòng thử lại.";
+          errorMessage = "Lỗi kết nối server. Vui lòng thử lại.";
         });
       }
     }
   }
 
-  // Hàm phụ trợ lưu lịch sử tách riêng cho gọn
   Future<void> _saveHistory(Map<String, dynamic> data) async {
     final user = AuthService.currentUser;
     if (user != null) {
-      await HistoryService.addHistory(user['id'], {
+      // Đảm bảo user['id'] là String để khớp với Firebase
+      await HistoryService.addHistory(user['id'].toString(), {
         'idMeal': widget.mealId,
         'strMeal': data['nameVi'] ?? data['nameEn'] ?? "Món ăn",
         'strMealThumb': data['thumbnail'] ?? "",
       });
-      print("✅ Đã lưu lịch sử: ${data['nameVi']}");
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: CircularProgressIndicator(color: Colors.orange)));
     }
 
     if (errorMessage.isNotEmpty || recipeData == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text("Thông báo")),
+        appBar: AppBar(title: const Text("Lỗi")),
         body: Center(child: Text(errorMessage)),
       );
     }
@@ -132,68 +111,30 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
       body: CustomScrollView(
         controller: _scrollController,
         slivers: [
-          // Header với ảnh món ăn và nút Back
           SliverAppBar(
             expandedHeight: 300.0,
-            toolbarHeight: 60,
-            centerTitle: true,
-            systemOverlayStyle: SystemUiOverlayStyle.light,
             pinned: true,
             backgroundColor: Colors.orange,
-            leading: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: CircleAvatar(
-                backgroundColor: Colors.black.withOpacity(0.4),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () {
-                    if (widget.onBack != null) {
-                      widget.onBack!(); // Quay lại Tab Danh mục
-                    } else {
-                      Navigator.pop(context); // Quay
-                    }
-                  },
-                ),
-              ),
-            ),
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
                 recipeData!["nameVi"] ?? "Chi tiết",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  shadows: [Shadow(color: Colors.black, blurRadius: 8)],
-                ),
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
               ),
-              background: isLocalMeal
-                  // Phân biệt cách hiển thị ảnh: Local dùng Image.file, API dùng Image.network
-                  ? Image.file(
-                      File(recipeData!["thumbnail"]),
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => 
-                        const Icon(Icons.broken_image, size: 100, color: Colors.grey),
-                    )
-                  : Image.network(
-                      recipeData!["thumbnail"],
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => 
-                        const Icon(Icons.broken_image, size: 100, color: Colors.grey),
-                    ),
+              background: CachedNetworkImage(
+                imageUrl: recipeData!["thumbnail"] ?? "",
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(color: Colors.grey[200]),
+                errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 50),
+              ),
             ),
           ),
-
-          // Nội dung chi tiết
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Nguyên liệu",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
+                  const Text("Nguyên liệu", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -206,24 +147,13 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Row(
-                            // Căn chỉnh lên trên để nếu nguyên liệu dài rớt dòng, icon vẫn ở trên cùng
                             crossAxisAlignment: CrossAxisAlignment.start, 
                             children: [
-                              const Padding(
-                                padding: EdgeInsets.only(top: 2), // Cân bằng vị trí icon với chữ
-                                child: Icon(
-                                  Icons.check_circle,
-                                  size: 18,
-                                  color: Colors.green,
-                                ),
-                              ),
+                              const Icon(Icons.check_circle, size: 18, color: Colors.green),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  ing["translated"] != null &&
-                                          ing["translated"].isNotEmpty
-                                      ? ing["translated"]
-                                      : ing["original"],
+                                  ing["translated"] ?? ing["original"] ?? "",
                                   style: const TextStyle(fontSize: 16),
                                 ),
                               ),
@@ -234,14 +164,10 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const Text(
-                    "Hướng dẫn cách làm",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
+                  const Text("Hướng dẫn cách làm", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
                   Text(
-                    recipeData!["instructionsVi"] ??
-                        "Chưa có hướng dẫn tiếng Việt.",
+                    recipeData!["instructionsVi"] ?? "Chưa có hướng dẫn cụ thể.",
                     style: const TextStyle(fontSize: 16, height: 1.6),
                   ),
                   const SizedBox(height: 100),
