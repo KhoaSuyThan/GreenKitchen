@@ -32,38 +32,48 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
 
   // Hàm lấy chi tiết công thức
   Future<void> _fetchRecipeDetail() async {
+    // ✅ BƯỚC QUAN TRỌNG NHẤT: Reset lại mọi thứ để không bị "dính" món cũ
+    if (mounted) {
+      setState(() {
+        isLoading = true;     // Bật vòng xoay loading lên
+        recipeData = null;    // Xóa sạch dữ liệu món cũ
+        errorMessage = "";    // Xóa thông báo lỗi cũ
+      });
+    }
+
     try {
-      // 1. KIỂM TRA FIREBASE TRƯỚC (Món ăn cộng đồng/do user đăng)
+      print("🔍 Đang tìm món ăn với ID: ${widget.mealId}");
+
+      // 1. KIỂM TRA FIREBASE TRƯỚC
       final fbData = await FirebaseService.instance.getRecipeById(widget.mealId);
-      
+
       if (fbData != null) {
         if (mounted) {
           setState(() {
-            // Chuyển đổi cấu trúc Firestore sang cấu trúc UI chung
             recipeData = {
               'idMeal': fbData['id'],
               'nameVi': fbData['title'],
-              'thumbnail': fbData['image_path'], // Đây là URL ảnh từ Storage
+              'thumbnail': fbData['image_path'],
               'ingredientsList': [
                 {"original": fbData['ingredients'], "translated": fbData['ingredients']}
               ],
               'instructionsVi': fbData['instructions'],
             };
             isFirebaseMeal = true;
-            isLoading = false;
+            isLoading = false; // Tắt loading sau khi đã có dữ liệu
           });
           _saveHistory(recipeData!);
         }
-        return; 
+        return;
       }
 
-      // 2. NẾU KHÔNG CÓ TRÊN FIREBASE, GỌI API (Món ăn quốc tế)
+      // 2. NẾU KHÔNG CÓ TRÊN FIREBASE, GỌI API
       final apiData = await RecipeDetailService.getRecipeById(widget.mealId);
       if (mounted) {
         setState(() {
           recipeData = apiData;
           isFirebaseMeal = false;
-          isLoading = false;
+          isLoading = false; // Tắt loading
         });
 
         if (apiData != null) {
@@ -71,6 +81,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         }
       }
     } catch (e) {
+      print("❌ Lỗi Fetch: $e");
       if (mounted) {
         setState(() {
           isLoading = false;
@@ -115,6 +126,22 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
             expandedHeight: 300.0,
             pinned: true,
             backgroundColor: Colors.orange,
+            leading: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: CircleAvatar(
+                backgroundColor: Colors.black.withOpacity(0.3), // Nền đen mờ để nút back luôn nổi bật
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () {
+                    if (widget.onBack != null) {
+                      widget.onBack!(); // Gọi callback nếu có
+                    } else {
+                      Navigator.pop(context); // Mặc định quay về trang trước
+                    }
+                  },
+                ),
+              ),
+            ),
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
                 recipeData!["nameVi"] ?? "Chi tiết",
@@ -147,7 +174,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start, 
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Icon(Icons.check_circle, size: 18, color: Colors.green),
                               const SizedBox(width: 12),

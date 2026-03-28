@@ -49,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
       selectedMealId == null
           ? const Center(child: Text("Chọn món để xem công thức"))
           : RecipeDetailScreen(
+              key: ValueKey(selectedMealId),
               mealId: selectedMealId!,
               onBack: () {
                 setState(() {

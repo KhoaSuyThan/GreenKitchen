@@ -57,8 +57,8 @@ class FirebaseService {
   Future<void> insertRecipe(Map<String, dynamic> row) async {
     try {
       row['created_at'] = FieldValue.serverTimestamp();
-      row['status'] = 'pending';
-      row['is_notified'] = 0;
+      row['status'] = row['status'] ?? 'pending';
+      row['is_notified'] = row['is_notified'] ?? 0;
 
       await _db.collection('recipes').add(row);
     } catch (e) {
