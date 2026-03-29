@@ -3,6 +3,9 @@ import '../services/auth_service.dart';
 import '../screens/login_screen.dart';
 import '../screens/change_password_screen.dart';
 import '../screens/history_screen.dart';
+import '../screens/AboutAppScreen.dart';
+import '../screens/HelpCenterScreen.dart';
+import '../screens/SettingsScreen.dart';
 
 class ProfileBody extends StatelessWidget {
 
@@ -111,9 +114,17 @@ class ProfileBody extends StatelessWidget {
 
                 const SizedBox(height: 20),
                 _buildSectionTitle("Cài đặt & Hỗ trợ"),
-                _buildMenuItem(Icons.settings_outlined, "Cài đặt ứng dụng", () {}),
-                _buildMenuItem(Icons.help_outline, "Trung tâm trợ giúp", () {}),
-                _buildMenuItem(Icons.info_outline, "Về ứng dụng", () {}),
+                _buildMenuItem(Icons.settings_outlined, "Cài đặt ứng dụng", () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
+                }),
+
+                _buildMenuItem(Icons.help_outline, "Trung tâm trợ giúp", () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const HelpCenterScreen()));
+                }),
+
+                _buildMenuItem(Icons.info_outline, "Về ứng dụng", () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const AboutAppScreen()));
+                }),
 
                 const SizedBox(height: 30),
                 // Nút Đăng xuất
@@ -138,6 +149,63 @@ class ProfileBody extends StatelessWidget {
     );
   }
 
+  void _showHelpBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
+              const SizedBox(height: 20),
+              const Text("Trung tâm trợ giúp", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 15),
+              ListTile(
+                leading: const Icon(Icons.email, color: Colors.green),
+                title: const Text("Gửi Email hỗ trợ"),
+                subtitle: const Text("support@doanapp.com"),
+                onTap: () {}, // Khoa có thể dùng url_launcher để mở app mail
+              ),
+              ListTile(
+                leading: const Icon(Icons.phone, color: Colors.green),
+                title: const Text("Hotline hỗ trợ"),
+                subtitle: const Text("1900 xxxx"),
+                onTap: () {}, // Khoa có thể dùng url_launcher để gọi điện
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAboutApp(BuildContext context) {
+    showAboutDialog(
+      context: context,
+      applicationName: "App Công Thức Nấu Ăn",
+      applicationVersion: "1.0.0",
+      applicationIcon: const Icon(Icons.restaurant_menu, size: 50, color: Colors.green),
+      children: [
+        const Text("Dự án được phát triển bởi Khoa và Team. Chuyên ngành Công nghệ phần mềm."),
+        const SizedBox(height: 10),
+        const Text("Chúc bạn có những trải nghiệm nấu ăn tuyệt vời!"),
+      ],
+    );
+  }
+
+  void _showSettingsDialog(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Tính năng Cài đặt đang được phát triển 🛠️"),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
   // Widget con cho tiêu đề mục
   Widget _buildSectionTitle(String title) {
     return Padding(
@@ -151,15 +219,23 @@ class ProfileBody extends StatelessWidget {
 
   // Widget con cho từng hàng menu
   Widget _buildMenuItem(IconData icon, String title, VoidCallback onTap) {
-    return Card(
-      elevation: 0,
-      color: Colors.grey.shade50,
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white, // Đổi sang màu trắng
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))
+        ],
+      ),
       child: ListTile(
-        leading: Icon(icon, color: Colors.green.shade600),
-        title: Text(title, style: const TextStyle(fontSize: 16)),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), shape: BoxShape.circle),
+          child: Icon(icon, color: Colors.green.shade600, size: 20),
+        ),
+        title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
         onTap: onTap,
       ),
     );
@@ -189,6 +265,4 @@ class ProfileBody extends StatelessWidget {
       ),
     );
   }
-
-
 }
