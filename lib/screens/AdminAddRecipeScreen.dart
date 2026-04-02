@@ -50,10 +50,12 @@ class _AdminAddRecipeScreenState extends State<AdminAddRecipeScreen> {
 
       if (mounted) {
         Navigator.pop(context); // Quay lại màn hình trước
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final primaryColor = isDark ? const Color(0xFF2E7D32) : Colors.orange;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("🚀 Tuyệt vời! Món ăn đã lên sóng trang chủ."),
-            backgroundColor: Colors.orange,
+          SnackBar(
+            content: const Text("🚀 Tuyệt vời! Món ăn đã lên sóng trang chủ."),
+            backgroundColor: primaryColor,
           ),
         );
       }
@@ -79,12 +81,16 @@ class _AdminAddRecipeScreenState extends State<AdminAddRecipeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = isDark ? const Color(0xFF2E7D32) : Colors.orange;
+    final bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFFFF3E0);
+    
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF3E0), // Nền màu cam rất nhạt
+      backgroundColor: bgColor,
       appBar: AppBar(
         title: const Text("Admin: Thêm món ăn nhanh",
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-        backgroundColor: Colors.orange,
+        backgroundColor: primaryColor,
         elevation: 2,
         centerTitle: true,
       ),
@@ -95,8 +101,8 @@ class _AdminAddRecipeScreenState extends State<AdminAddRecipeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("XEM TRƯỚC HÌNH ẢNH",
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.orange)),
+                Text("XEM TRƯỚC HÌNH ẢNH",
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: primaryColor)),
                 const SizedBox(height: 10),
 
                 // --- KHU VỰC PREVIEW ẢNH MẠNG ---
@@ -135,14 +141,14 @@ class _AdminAddRecipeScreenState extends State<AdminAddRecipeScreen> {
 
                 // --- NÚT ĐĂNG BÀI ---
                 _isUploading
-                    ? const Center(child: CircularProgressIndicator(color: Colors.orange))
+                    ? Center(child: CircularProgressIndicator(color: primaryColor))
                     : ElevatedButton.icon(
                   onPressed: _adminSubmit,
                   icon: const Icon(Icons.send_rounded, color: Colors.white),
                   label: const Text("ĐĂNG BÀI NGAY",
                       style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
+                    backgroundColor: primaryColor,
                     minimumSize: const Size(double.infinity, 55),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 3,
@@ -157,8 +163,8 @@ class _AdminAddRecipeScreenState extends State<AdminAddRecipeScreen> {
           if (_isUploading)
             Container(
               color: Colors.black26,
-              child: const Center(
-                child: CircularProgressIndicator(color: Colors.orange),
+              child: Center(
+                child: CircularProgressIndicator(color: primaryColor),
               ),
             ),
         ],
@@ -201,6 +207,9 @@ class _AdminAddRecipeScreenState extends State<AdminAddRecipeScreen> {
 
   // Widget dùng chung cho các ô nhập liệu
   Widget _buildTextField(TextEditingController controller, String label, IconData icon, {int maxLines = 1}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = isDark ? const Color(0xFF2E7D32) : Colors.orange;
+    
     return TextField(
       controller: controller,
       maxLines: maxLines,
@@ -209,13 +218,13 @@ class _AdminAddRecipeScreenState extends State<AdminAddRecipeScreen> {
       },
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: Colors.orange),
+        prefixIcon: Icon(icon, color: primaryColor),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: isDark ? Colors.grey.shade800 : Colors.white,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.orange, width: 2),
+          borderSide: BorderSide(color: primaryColor, width: 2),
         ),
       ),
     );

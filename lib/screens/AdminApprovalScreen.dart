@@ -38,11 +38,14 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = isDark ? const Color(0xFF2E7D32) : Colors.orange;
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text("Quản lý bài viết", // Đổi tên cho bao quát hơn
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.orange,
+        backgroundColor: primaryColor,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           // Nút refresh để Admin kiểm tra bài mới nhanh
@@ -62,7 +65,7 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
             MaterialPageRoute(builder: (context) => const AdminAddRecipeScreen()),
           ).then((_) => setState(() {})); // Load lại nếu cần
         },
-        backgroundColor: Colors.orange,
+        backgroundColor: primaryColor,
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text("Đăng bài mới", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
@@ -71,21 +74,21 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
         future: _getPending(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: Colors.orange));
+            return Center(child: CircularProgressIndicator(color: primaryColor));
           }
 
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.done_all, size: 80, color: Colors.green),
-                  SizedBox(height: 10),
+                  Icon(Icons.done_all, size: 80, color: isDark ? Colors.green.shade400 : Colors.green),
+                  const SizedBox(height: 10),
                   Text("Tuyệt vời! Không còn bài nào chờ duyệt.",
-                      style: TextStyle(color: Colors.grey, fontSize: 16)),
-                  SizedBox(height: 20),
+                      style: TextStyle(color: isDark ? Colors.grey.shade400 : Colors.grey, fontSize: 16)),
+                  const SizedBox(height: 20),
                   Text("Admin có thể bấm nút dưới để đăng bài mới!",
-                      style: TextStyle(color: Colors.orange, fontSize: 14)),
+                      style: TextStyle(color: primaryColor, fontSize: 14)),
                 ],
               ),
             );

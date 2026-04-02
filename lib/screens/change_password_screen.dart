@@ -88,15 +88,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF121212) : backgroundColor;
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: bgColor,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           "Đổi mật khẩu",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.white),
         ),
-        backgroundColor: backgroundColor,
-        foregroundColor: Colors.black87, // Màu nút Back
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white, // Màu nút Back
         elevation: 0,
         centerTitle: true,
       ),
@@ -121,15 +123,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                         child: const Icon(Icons.lock_person_rounded, size: 50, color: primaryGreen),
                       ),
                       const SizedBox(height: 15),
-                      const Text(
+                      Text(
                         "Tạo mật khẩu mới",
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         "Vui lòng điền thông tin bên dưới để\ncập nhật mật khẩu của bạn.",
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 14, color: Colors.black54, height: 1.4),
+                        style: TextStyle(fontSize: 14, color: isDark ? Colors.grey.shade400 : Colors.black54, height: 1.4),
                       ),
                       const SizedBox(height: 30),
                     ],
@@ -137,7 +139,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 ),
 
                 // Form nhập liệu
-                const Text("MẬT KHẨU HIỆN TẠI", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black54)),
+                Text("MẬT KHẨU HIỆN TẠI", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black54)),
                 const SizedBox(height: 8),
                 CustomPasswordField(
                   controller: _oldPassController,
@@ -147,7 +149,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
                 const SizedBox(height: 20),
 
-                const Text("MẬT KHẨU MỚI", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black54)),
+                Text("MẬT KHẨU MỚI", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black54)),
                 const SizedBox(height: 8),
                 CustomPasswordField(
                   controller: _newPassController,
@@ -161,7 +163,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
                 const SizedBox(height: 20),
 
-                const Text("XÁC NHẬN MẬT KHẨU", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black54)),
+                Text("XÁC NHẬN MẬT KHẨU", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black54)),
                 const SizedBox(height: 8),
                 CustomPasswordField(
                   controller: _confirmPassController,
@@ -259,7 +261,7 @@ class _CustomPasswordFieldState extends State<CustomPasswordField> {
         obscureText: _obscureText,
         textInputAction: widget.textInputAction,
         validator: widget.validator,
-        style: const TextStyle(fontSize: 15),
+        style: const TextStyle(fontSize: 15, color: Colors.black),
         decoration: InputDecoration(
           hintText: widget.hintText,
           hintStyle: const TextStyle(color: Colors.black38, fontSize: 14),

@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-// ĐỔI: Dùng FirebaseService thay vì DatabaseHelper
-import '../database/firebase_service.dart';
+
 
 class AuthService {
   // Biến static để lưu user đang đăng nhập hiện tại trong toàn app

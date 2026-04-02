@@ -47,17 +47,16 @@ dependencies:
   convex_bottom_bar: ^3.2.0
   translator: ^1.0.4+1
   image_picker: ^1.0.7
-  path_provider: ^2.1.2
+  path_provider: ^2.1.2 
   url_launcher: ^6.3.2
+  provider: ^6.1.5+1 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-  # SQFLITE và PATH có thể để ở đây nếu bạn chỉ dùng để chạy script chuyển data, 
-  # còn nếu không dùng nữa thì có thể xóa hẳn.
-  sqflite: ^2.3.0
-  path: ^1.8.0
+
+
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -47,6 +47,7 @@ class _MealCardState extends State<MealCard> {
   @override
   Widget build(BuildContext context) {
     final meal = widget.meal;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // --- LOGIC MAP DỮ LIỆU TỪ 2 NGUỒN ---
     final bool isFromFirestore = meal['image_path'] != null; 
@@ -60,11 +61,11 @@ class _MealCardState extends State<MealCard> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 18, left: 16, right: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? Colors.grey.shade800 : Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -138,7 +139,7 @@ class _MealCardState extends State<MealCard> {
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
                   ),
                   const SizedBox(height: 6),
                   Row(
@@ -147,7 +148,7 @@ class _MealCardState extends State<MealCard> {
                       const SizedBox(width: 4),
                       Text(
                         area,
-                        style: const TextStyle(color: Colors.grey, fontSize: 13),
+                        style: const TextStyle(color: Colors.black, fontSize: 13),
                       ),
                     ],
                   ),
@@ -203,7 +204,7 @@ class _MealCardState extends State<MealCard> {
       width: double.infinity,
       height: 200,
       color: Colors.grey[200],
-      child: const Icon(Icons.broken_image_outlined, size: 40, color: Colors.grey),
+      child: const Icon(Icons.broken_image_outlined, size: 40, color: Colors.black),
     );
   }
 }

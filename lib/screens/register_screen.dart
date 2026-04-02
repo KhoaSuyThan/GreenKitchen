@@ -55,9 +55,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F8E9),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        title: const Text(
+          "Đăng ký",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF81C784)),
+        centerTitle: true,
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -83,8 +88,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               _buildInputWrapper(
                 child: TextField(
                   controller: _usernameController,
+                  style: const TextStyle(color: Colors.black),
                   decoration: const InputDecoration(
                     hintText: "Tên người dùng",
+                    hintStyle: TextStyle(color: Colors.grey),
                     prefixIcon: Icon(Icons.person_outline, color: Color(0xFF81C784)),
                     border: InputBorder.none,
                   ),
@@ -95,8 +102,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               _buildInputWrapper(
                 child: TextField(
                   controller: _emailController,
+                  style: const TextStyle(color: Colors.black),
                   decoration: const InputDecoration(
                     hintText: "Email",
+                    hintStyle: TextStyle(color: Colors.grey),
                     prefixIcon: Icon(Icons.email_outlined, color: Color(0xFF81C784)),
                     border: InputBorder.none,
                   ),
@@ -108,8 +117,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: TextField(
                   controller: _passwordController,
                   obscureText: true,
+                  style: const TextStyle(color: Colors.black),
                   decoration: const InputDecoration(
                     hintText: "Mật khẩu",
+                    hintStyle: TextStyle(color: Colors.grey),
                     prefixIcon: Icon(Icons.lock_outline, color: Color(0xFF81C784)),
                     border: InputBorder.none,
                   ),

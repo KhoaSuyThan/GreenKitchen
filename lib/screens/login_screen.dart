@@ -147,6 +147,7 @@ class _LoginScreenState extends State<LoginScreen> {
               _buildInputWrapper(
                 child: TextField(
                   controller: _emailController,
+                  style: const TextStyle(color: Colors.black),
                   decoration: const InputDecoration(
                     hintText: "Email/Username",
                     prefixIcon: Icon(Icons.email_outlined, color: Color(0xFF81C784)),
@@ -159,6 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: TextField(
                   controller: _passwordController,
                   obscureText: true,
+                  style: const TextStyle(color: Colors.black),
                   decoration: const InputDecoration(
                     hintText: "Mật khẩu",
                     prefixIcon: Icon(Icons.lock_open_rounded, color: Color(0xFF81C784)),
