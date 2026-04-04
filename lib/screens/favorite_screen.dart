@@ -84,10 +84,13 @@ class FavoriteScreenState extends State<FavoriteScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = isDark ? const Color(0xFF2E7D32) : Colors.green;
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text("Món yêu thích"),
-        backgroundColor: Colors.green,
+        backgroundColor: primaryColor,
         actions: [
           if (favorites.isNotEmpty)
             IconButton(
@@ -129,11 +132,11 @@ class FavoriteScreenState extends State<FavoriteScreen> {
                   },
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark ? Colors.grey.shade800 : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
+                          color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
                           blurRadius: 10,
                           offset: const Offset(0, 6),
                         )
@@ -181,7 +184,7 @@ class FavoriteScreenState extends State<FavoriteScreen> {
                           padding: const EdgeInsets.all(10),
                           child: Text(
                             meal["meal_name"] ?? "Món ăn",
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),

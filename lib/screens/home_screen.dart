@@ -5,7 +5,7 @@ import 'favorite_screen.dart';
 import 'recipe_details_screen.dart';
 import '../services/auth_service.dart';
 import '../widgets/profile_body.dart';
-// Import 2 màn hình mới (Bạn cần tạo 2 file này theo code ở mục 2 và 3 bên dưới)
+// Import 2 màn hình mới 
 import 'AdminApprovalScreen.dart';
 import 'AddRecipeFormScreen.dart';
 
@@ -63,14 +63,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // THÊM DÒNG NÀY: Kiểm tra xem app đang ở chế độ Sáng hay Tối
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xffF8F8F8),
+      // SỬA DÒNG NÀY: Đổi nền Scaffold sang đen khi ở Dark Mode
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xffF8F8F8),
+      
       body: IndexedStack(index: _selectedIndex, children: _pages),
+      
       bottomNavigationBar: ConvexAppBar(
         initialActiveIndex: _selectedIndex,
-        backgroundColor: Colors.white,
+        
+        // SỬA DÒNG NÀY: Đổi màu nền của thanh Menu dưới cùng
+        backgroundColor: isDark ? const Color(0xFF1F1F1F) : Colors.white,
+        
         activeColor: Colors.green,
-        color: Colors.grey,
+        
+        // SỬA DÒNG NÀY: Chữ/Icon khi không chọn sáng hơn 1 chút ở Dark Mode để dễ nhìn
+        color: isDark ? Colors.grey.shade400 : Colors.grey,
+        
         style: TabStyle.fixedCircle,
         items: const [
           TabItem(icon: Icons.grid_view_rounded, title: 'Danh mục'),

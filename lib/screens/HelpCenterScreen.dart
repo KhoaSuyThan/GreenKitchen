@@ -93,8 +93,9 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FA),
       appBar: AppBar(
         title: const Text("Trung tâm trợ giúp",
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -135,8 +136,8 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // TIÊU ĐỀ: LIÊN HỆ (Đã sửa FontWeight.w900 cho cực đậm)
-                  const Text("LIÊN HỆ TRỰC TIẾP",
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.black)),
+                  Text("LIÊN HỆ TRỰC TIẾP",
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black)),
                   const SizedBox(height: 15),
 
                   _buildContactCard(
@@ -144,6 +145,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                     title: "Gửi Email cho Khoa",
                     subtitle: "khoanv249@gmail.com",
                     color: Colors.blue.shade700,
+                    isDark: isDark,
                     onTap: () => _sendEmail("khoanv249@gmail.com"),
                   ),
 
@@ -152,28 +154,29 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                     title: "Hotline hỗ trợ (Zalo)",
                     subtitle: "0374 139 213",
                     color: Colors.orange.shade800,
+                    isDark: isDark,
                     onTap: () => _makePhoneCall("0374139213"),
                   ),
 
                   const SizedBox(height: 30),
 
                   // TIÊU ĐỀ: FAQ (Đã sửa FontWeight.w900)
-                  const Text("CÂU HỎI THƯỜNG GẶP",
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.black)),
+                  Text("CÂU HỎI THƯỜNG GẶP",
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black)),
                   const SizedBox(height: 10),
 
                   // --- HIỂN THỊ DANH SÁCH FAQ SAU KHI LỌC ---
                   _foundFaqs.isNotEmpty
                       ? Column(
                     children: _foundFaqs
-                        .map((faq) => _buildFAQItem(faq["q"]!, faq["a"]!))
+                        .map((faq) => _buildFAQItem(faq["q"]!, faq["a"]!, isDark))
                         .toList(),
                   )
-                      : const Center(
+                      : Center(
                     child: Padding(
-                      padding: EdgeInsets.all(20.0),
+                      padding: const EdgeInsets.all(20.0),
                       child: Text("Không tìm thấy kết quả nào!",
-                          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                          style: TextStyle(color: isDark ? Colors.red.shade300 : Colors.red, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -186,11 +189,11 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
   }
 
   // --- Widget Card Liên hệ ---
-  Widget _buildContactCard({required IconData icon, required String title, required String subtitle, required Color color, required VoidCallback onTap}) {
+  Widget _buildContactCard({required IconData icon, required String title, required String subtitle, required Color color, required bool isDark, required VoidCallback onTap}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? Colors.grey.shade800 : Colors.white,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 4))],
       ),
@@ -200,33 +203,33 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
           backgroundColor: color.withOpacity(0.1),
           child: Icon(icon, color: color),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)),
-        subtitle: Text(subtitle, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)), // CHỮ ĐẬM HƠN
-        trailing: const Icon(Icons.chevron_right, color: Colors.black),
+        title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? Colors.white : Colors.black)),
+        subtitle: Text(subtitle, style: TextStyle(color: isDark ? Colors.grey.shade300 : Colors.black, fontWeight: FontWeight.bold)), // CHỮ ĐẬM HƠN
+        trailing: Icon(Icons.chevron_right, color: isDark ? Colors.grey.shade400 : Colors.black),
       ),
     );
   }
 
   // --- Widget FAQ ---
-  Widget _buildFAQItem(String question, String answer) {
+  Widget _buildFAQItem(String question, String answer, bool isDark) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? Colors.grey.shade800 : Colors.white,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: isDark ? Colors.grey.shade700 : Colors.grey.shade300),
       ),
       child: ExpansionTile(
         iconColor: Colors.green,
-        collapsedIconColor: Colors.black,
-        title: Text(question, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black)),
+        collapsedIconColor: isDark ? Colors.white : Colors.black,
+        title: Text(question, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
         children: [
           Padding(
             padding: const EdgeInsets.only(left: 16, right: 16, bottom: 20, top: 5),
             child: Text(
               answer,
-              style: const TextStyle(
-                  color: Colors.black87, // Đen đậm dễ nhìn
+              style: TextStyle(
+                  color: isDark ? Colors.grey.shade300 : Colors.black87, // Đen đậm dễ nhìn
                   fontSize: 14,
                   height: 1.5,
                   fontWeight: FontWeight.w600 // Tăng độ đậm nội dung

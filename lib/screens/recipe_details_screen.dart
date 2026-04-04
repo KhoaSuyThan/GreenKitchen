@@ -181,7 +181,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                               Expanded(
                                 child: Text(
                                   ing["translated"] ?? ing["original"] ?? "",
-                                  style: const TextStyle(fontSize: 16),
+                                  style: const TextStyle(fontSize: 16, color: Colors.black),
                                 ),
                               ),
                             ],

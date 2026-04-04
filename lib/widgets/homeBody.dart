@@ -258,6 +258,21 @@ class _HomeBodyState extends State<HomeBody> {
         itemCount: categories.length,
         itemBuilder: (context, index) {
           final cat = categories[index];
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          
+          // Tạo bản đồ màu tối cho dark mode (giữ tone nhưng đậm hơn)
+          final darkModeColors = {
+            0: Colors.grey.shade800,      // Bữa sáng - xám tối
+            1: const Color(0xFF4A2020),   // Món gà - nâu đỏ tối
+            2: const Color(0xFF5C1A1A),   // Thịt bò - đỏ tối
+            3: const Color(0xFF1A3A52),   // Món cá - xanh dương tối
+            4: const Color(0xFF4A4020),   // Món mì - vàng nâu tối
+            5: const Color(0xFF2A4A2A),   // Salad - xanh tối
+            6: const Color(0xFF4A2A3A),   // Cơm - hồng tím tối
+            7: const Color(0xFF2A4A2A),   // Món chay - xanh tối
+            8: const Color(0xFF4A2A20),   // Pizza - cam nâu tối
+          };
+          
           return GestureDetector(
             onTap: () {
               _searchController.text = cat.label;
@@ -269,10 +284,10 @@ class _HomeBodyState extends State<HomeBody> {
               width: 90,
               margin: const EdgeInsets.only(right: 15),
               decoration: BoxDecoration(
-                color: cat.color,
+                color: isDark ? darkModeColors[index % darkModeColors.length] : cat.color,
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 6)),
+                  BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.08), blurRadius: 12, offset: const Offset(0, 6)),
                 ],
               ),
               child: Column(
@@ -280,7 +295,7 @@ class _HomeBodyState extends State<HomeBody> {
                 children: [
                   Text(cat.icon, style: const TextStyle(fontSize: 30)),
                   const SizedBox(height: 5),
-                  Text(cat.label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                  Text(cat.label, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: isDark ? Colors.white : Colors.black)),
                 ],
               ),
             ),
