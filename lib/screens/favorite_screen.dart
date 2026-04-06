@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/favorite_service.dart';
 import '../services/auth_service.dart'; 
+import 'package:translator/translator.dart';
 
 class FavoriteScreen extends StatefulWidget {
   final Function(String)? onMealTap;
@@ -14,8 +15,8 @@ class FavoriteScreen extends StatefulWidget {
 
 class FavoriteScreenState extends State<FavoriteScreen> {
   List favorites = [];
+  final translator = GoogleTranslator(); // KHỞI TẠO BỘ DỊCH
 
-  // SỬA: Lấy ID dạng String từ AuthService
   String? get currentUserId => AuthService.currentUser?['id']?.toString();
 
   @override
@@ -29,7 +30,6 @@ class FavoriteScreenState extends State<FavoriteScreen> {
   }
 
   void loadFavorites() async {
-    // SỬA: Kiểm tra null thay vì so sánh với 0
     if (currentUserId == null) return; 
 
     final data = await FavoriteService.getFavorites(currentUserId!);
@@ -40,7 +40,6 @@ class FavoriteScreenState extends State<FavoriteScreen> {
     });
   }
 
-  // SỬA: Firebase cần cả UserId và MealId để xóa đúng bản ghi
   void _removeFavorite(String mealId) async {
     if (currentUserId == null) return;
 
@@ -88,9 +87,11 @@ class FavoriteScreenState extends State<FavoriteScreen> {
     final primaryColor = isDark ? const Color(0xFF2E7D32) : Colors.green;
     
     return Scaffold(
+      backgroundColor: isDark ? Colors.black : Colors.grey.shade50, // Nền đồng bộ
       appBar: AppBar(
-        title: const Text("Món yêu thích"),
+        title: const Text("Món yêu thích", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: primaryColor,
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           if (favorites.isNotEmpty)
             IconButton(
@@ -101,14 +102,12 @@ class FavoriteScreenState extends State<FavoriteScreen> {
         ],
       ),
       body: currentUserId == null 
-          ? const Center(
-              child: Text("Vui lòng đăng nhập để xem món yêu thích"),
-            )
+          ? Center(child: Text("Vui lòng đăng nhập để xem món yêu thích", style: TextStyle(color: isDark ? Colors.white : Colors.black)))
           : favorites.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
                 "Chưa có món yêu thích ❤️",
-                style: TextStyle(fontSize: 16),
+                style: TextStyle(fontSize: 16, color: isDark ? Colors.white : Colors.black),
               ),
             )
           : GridView.builder(
@@ -122,6 +121,7 @@ class FavoriteScreenState extends State<FavoriteScreen> {
               ),
               itemBuilder: (context, index) {
                 final meal = favorites[index];
+                final String mealName = meal["meal_name"] ?? "Món ăn";
 
                 return InkWell(
                   borderRadius: BorderRadius.circular(20), 
@@ -132,11 +132,11 @@ class FavoriteScreenState extends State<FavoriteScreen> {
                   },
                   child: Container(
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade800 : Colors.white,
+                      color: isDark ? const Color(0xFF2A2A2A) : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
+                          color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
                           blurRadius: 10,
                           offset: const Offset(0, 6),
                         )
@@ -148,8 +148,7 @@ class FavoriteScreenState extends State<FavoriteScreen> {
                         Stack(
                           children: [
                             ClipRRect(
-                              borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(20)),
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                               child: Image.network(
                                 meal["meal_thumb"] ?? "",
                                 height: 120,
@@ -173,7 +172,7 @@ class FavoriteScreenState extends State<FavoriteScreen> {
                                   child: const Icon(
                                     Icons.favorite,
                                     color: Colors.red,
-                                    size: 20,
+                                    size: 18,
                                   ),
                                 ),
                               ),
@@ -182,11 +181,25 @@ class FavoriteScreenState extends State<FavoriteScreen> {
                         ),
                         Padding(
                           padding: const EdgeInsets.all(10),
-                          child: Text(
-                            meal["meal_name"] ?? "Món ăn",
-                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                          child: FutureBuilder(
+                            // --- THỰC HIỆN DỊCH TÊN MÓN ĂN ---
+                            future: translator.translate(mealName, from: 'en', to: 'vi'),
+                            builder: (context, snapshot) {
+                              String displayText = mealName;
+                              if (snapshot.hasData) {
+                                displayText = snapshot.data!.text;
+                              }
+                              return Text(
+                                displayText,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold, 
+                                  color: isDark ? Colors.white : Colors.black87, // Sửa màu chữ theo giao diện
+                                  fontSize: 14,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              );
+                            },
                           ),
                         ),
                       ],
