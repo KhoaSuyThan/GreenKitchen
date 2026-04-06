@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:translator/translator.dart'; // THÊM THƯ VIỆN DỊCH
 import '../services/favorite_service.dart';
 import '../services/auth_service.dart';
 
@@ -21,6 +22,7 @@ class MealCard extends StatefulWidget {
 
 class _MealCardState extends State<MealCard> {
   bool isFavorite = false;
+  final translator = GoogleTranslator(); // KHỞI TẠO BỘ DỊCH
 
   @override
   void initState() {
@@ -65,7 +67,8 @@ class _MealCardState extends State<MealCard> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
+              // ĐÃ SỬA CẢNH BÁO XANH DƯƠNG: Dùng withValues thay cho withOpacity
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -135,20 +138,40 @@ class _MealCardState extends State<MealCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                  // --- TỰ ĐỘNG DỊCH TÊN MÓN ĂN ---
+                  FutureBuilder(
+                    // Chỉ dịch nếu lấy từ API (không phải từ Firestore)
+                    future: isFromFirestore ? null : translator.translate(title, from: 'auto', to: 'vi'),
+                    builder: (context, snapshot) {
+                      String displayText = title;
+                      if (snapshot.hasData) {
+                        displayText = snapshot.data!.text; // Lấy kết quả tiếng Việt
+                      }
+                      return Text(
+                        displayText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 18, 
+                          fontWeight: FontWeight.bold, 
+                          color: isDark ? Colors.white : Colors.black // Tương thích Dark Mode
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 6),
+                  
+                  // --- TỰ ĐỘNG DỊCH KHU VỰC (AREA) ---
                   Row(
                     children: [
                       const Icon(Icons.public, size: 14, color: Colors.orange),
                       const SizedBox(width: 4),
                       Text(
-                        area,
-                        style: const TextStyle(color: Colors.black, fontSize: 13),
+                        area, // Trực tiếp in ra tên gốc không qua dịch
+                        style: TextStyle(
+                          color: isDark ? Colors.white70 : Colors.black87,
+                          fontSize: 13
+                        ),
                       ),
                     ],
                   ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // THÊM thư viện Firestore
 import '../services/auth_service.dart';
 import '../screens/login_screen.dart';
 import '../screens/change_password_screen.dart';
@@ -7,9 +8,153 @@ import '../screens/AboutAppScreen.dart';
 import '../screens/HelpCenterScreen.dart';
 import '../screens/SettingsScreen.dart';
 
-class ProfileBody extends StatelessWidget {
+// ĐỔI TỪ StatelessWidget SANG StatefulWidget
+class ProfileBody extends StatefulWidget {
   final Function(String) onHistoryMealTap;
   const ProfileBody({super.key, required this.onHistoryMealTap});
+
+  @override
+  State<ProfileBody> createState() => _ProfileBodyState();
+}
+
+class _ProfileBodyState extends State<ProfileBody> {
+  final TextEditingController _urlController = TextEditingController();
+  bool _isLoading = false;
+  String? _localPhotoUrl; // Biến lưu tạm link ảnh để giao diện cập nhật ngay lập tức
+
+  @override
+  void initState() {
+    super.initState();
+    // Khởi tạo link ảnh hiện tại từ AuthService (nếu có)
+    _localPhotoUrl = AuthService.currentUser?['photoUrl'];
+  }
+
+  // --- HÀM 1: CẬP NHẬT ẢNH LÊN FIRESTORE ---
+ Future<void> _updateAvatarOnFirestore(String newUrl) async {
+    final user = AuthService.currentUser;
+    // Đổi kiểm tra 'uid' thành kiểm tra 'email'
+    if (user == null || user['email'] == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Lỗi: Không tìm thấy Email người dùng!")));
+      return;
+    }
+
+    setState(() { _isLoading = true; });
+
+    try {
+      // 1. Quét tìm document trong 'users' có email khớp với email đang đăng nhập
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: user['email'])
+          .get();
+
+      // Nếu không tìm thấy ai trùng email này
+      if (querySnapshot.docs.isEmpty) {
+        if (!mounted) return;
+        setState(() { _isLoading = false; });
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Lỗi: Tài khoản không tồn tại trên hệ thống!")));
+        return;
+      }
+
+      // 2. Lấy ID thực sự của document đó và tiến hành update
+      final docId = querySnapshot.docs.first.id;
+      await FirebaseFirestore.instance.collection('users').doc(docId).update({
+        'photoUrl': newUrl,
+      });
+
+      if (!mounted) return;
+
+      setState(() {
+        _localPhotoUrl = newUrl; // Cập nhật biến cục bộ
+        user['photoUrl'] = newUrl; // Cập nhật luôn vào AuthService
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Đã cập nhật ảnh đại diện thành công! 🥰"), backgroundColor: Colors.green),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      
+      setState(() { _isLoading = false; });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Lỗi cập nhật: $e"), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  // --- HÀM 2: HIỂN THỊ POPUP NHẬP LINK ---
+  void _showUrlInputDialog(BuildContext context) {
+    _urlController.clear(); // Xóa khung nhập cũ
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        String? previewUrl; // Biến xem trước ảnh trong popup
+
+        return StatefulBuilder(
+          builder: (context, setPopupState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return AlertDialog(
+              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+              title: Center(child: Text("Set ảnh đại diện", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isDark ? Colors.white : Colors.black))),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Khung xem trước ảnh
+                  Container(
+                    width: 100,
+                    height: 100,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                      border: Border.all(color: Colors.green, width: 2),
+                    ),
+                    child: CircleAvatar(
+                      backgroundColor: Colors.transparent,
+                      backgroundImage: (previewUrl != null && previewUrl!.isNotEmpty) ? NetworkImage(previewUrl!) : null,
+                      child: (previewUrl == null || previewUrl!.isEmpty)
+                          ? const Icon(Icons.person, size: 50, color: Colors.grey)
+                          : null,
+                    ),
+                  ),
+                  // Khung nhập link
+                  TextField(
+                    controller: _urlController,
+                    style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                    decoration: const InputDecoration(
+                      hintText: "Dán link ảnh (URL) vào đây...",
+                      hintStyle: TextStyle(fontSize: 13, color: Colors.grey),
+                      prefixIcon: Icon(Icons.link, color: Colors.green),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(15))),
+                    ),
+                    onChanged: (value) {
+                      setPopupState(() { previewUrl = value.trim(); }); // Render lại ảnh xem trước
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Hủy", style: TextStyle(color: Colors.grey)),
+                ),
+                TextButton(
+                  onPressed: () {
+                    if (_urlController.text.trim().isNotEmpty) {
+                      _updateAvatarOnFirestore(_urlController.text.trim());
+                      Navigator.pop(context);
+                    }
+                  },
+                  child: const Text("Lưu", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,9 +162,8 @@ class ProfileBody extends StatelessWidget {
     final String role = user?['role'] ?? 'user';
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // BỌC CONTAINER ÉP MÀU NỀN TẠI ĐÂY ĐỂ TRÁNH BỊ LỖI NỀN TRẮNG TỪ TRANG MAIN
     return Container(
-      color: isDark ? Colors.black : Colors.grey.shade50, // Nền đen tuyệt đối khi Dark Mode
+      color: isDark ? Colors.black : Colors.grey.shade50,
       child: SingleChildScrollView(
         child: Column(
           children: [
@@ -31,9 +175,8 @@ class ProfileBody extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  // Đổi màu Gradient: Tối thì dùng xanh lục đậm (rất sang), Sáng dùng xanh lá tươi
                   colors: isDark 
-                      ? [const Color(0xFF1B5E20), const Color(0xFF2E7D32)] // Xanh lục đậm
+                      ? [const Color(0xFF1B5E20), const Color(0xFF2E7D32)]
                       : [Colors.green.shade600, Colors.green.shade400],
                 ),
                 borderRadius: const BorderRadius.only(
@@ -43,52 +186,79 @@ class ProfileBody extends StatelessWidget {
               ),
               child: Column(
                 children: [
+                  // --- VÙNG AVATAR ĐÃ NÂNG CẤP ---
                   Stack(
                     children: [
-                      CircleAvatar(
-                        radius: 55,
-                        backgroundColor: isDark ? Colors.black : Colors.white,
+                      Container(
+                        padding: const EdgeInsets.all(4), // Viền trắng/đen bọc ngoài
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isDark ? Colors.black : Colors.white,
+                        ),
                         child: CircleAvatar(
                           radius: 50,
                           backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-                          child: Icon(
-                            Icons.person,
-                            size: 60,
-                            // Đổi icon màu xanh neon cho nổi bật trên nền tối
-                            color: isDark ? Colors.greenAccent : Colors.green, 
-                          ),
+                          // Hiển thị ảnh nếu có link
+                          backgroundImage: (_localPhotoUrl != null && _localPhotoUrl!.isNotEmpty)
+                              ? NetworkImage(_localPhotoUrl!)
+                              : null,
+                          // Hiện Icon nếu không có link
+                          child: (_localPhotoUrl == null || _localPhotoUrl!.isEmpty)
+                              ? Icon(Icons.person, size: 60, color: isDark ? Colors.greenAccent : Colors.green)
+                              : null,
                         ),
                       ),
+
+                      // Hiệu ứng loading khi đang lưu
+                      if (_isLoading)
+                        const Positioned.fill(
+                          child: CircleAvatar(
+                            radius: 54, // To bằng tổng kích thước viền
+                            backgroundColor: Colors.black54,
+                            child: CircularProgressIndicator(color: Colors.white),
+                          ),
+                        ),
+
+                      // Badge Quản trị viên (Góc phải)
                       if (role == 'admin')
                         Positioned(
-                          bottom: 0,
+                          top: 0,
                           right: 0,
                           child: Container(
                             padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: Colors.orange,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.star, color: Colors.white, size: 20),
+                            decoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
+                            child: const Icon(Icons.star, color: Colors.white, size: 18),
                           ),
                         ),
+
+                      // Nút Tròn Camera để đổi Avatar (Góc phải dưới)
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: GestureDetector(
+                          onTap: () => _showUrlInputDialog(context), // Bật popup
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: isDark ? Colors.black : Colors.white, width: 2), // Viền cho tách biệt
+                            ),
+                            child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
+                  
                   const SizedBox(height: 15),
                   Text(
                     user?['username'] ?? "Khách",
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white, // Luôn trắng tinh
-                    ),
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   Text(
                     user?['email'] ?? "Chưa cập nhật email",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white.withOpacity(0.9),
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.9)),
                   ),
                   if (role == 'admin')
                     Container(
@@ -98,16 +268,13 @@ class ProfileBody extends StatelessWidget {
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Text(
-                        "QUẢN TRỊ VIÊN",
-                        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                      ),
+                      child: const Text("QUẢN TRỊ VIÊN", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                     ),
                 ],
               ),
             ),
 
-            // --- MENU LIST: Các tùy chọn ---
+            // --- MENU LIST: Các tùy chọn (GIỮ NGUYÊN) ---
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -119,7 +286,7 @@ class ProfileBody extends StatelessWidget {
                   }),
                   _buildMenuItem(Icons.history, "Lịch sử xem món", () async {
                     final String? selectedId = await Navigator.push(context, MaterialPageRoute(builder: (context) => const HistoryScreen()));
-                    if (selectedId != null) onHistoryMealTap(selectedId);
+                    if (selectedId != null) widget.onHistoryMealTap(selectedId);
                   }),
 
                   const SizedBox(height: 20),
@@ -157,7 +324,6 @@ class ProfileBody extends StatelessWidget {
     );
   }
 
-  // TIÊU ĐỀ: ÉP CHỮ TRẮNG TINH
   Widget _buildSectionTitle(String title) {
     return Builder(
       builder: (context) {
@@ -169,7 +335,7 @@ class ProfileBody extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.grey.shade700, // Trắng tinh khi dark mode
+              color: isDark ? Colors.white : Colors.grey.shade700, 
             ),
           ),
         );
@@ -177,7 +343,6 @@ class ProfileBody extends StatelessWidget {
     );
   }
 
-  // CÁC NÚT MENU: NỀN XÁM, CHỮ TRẮNG
   Widget _buildMenuItem(IconData icon, String title, VoidCallback onTap) {
     return Builder(
       builder: (context) {
@@ -185,28 +350,18 @@ class ProfileBody extends StatelessWidget {
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF2A2A2A) : Colors.white, // Nền xám đậm cho nút
+            color: isDark ? const Color(0xFF2A2A2A) : Colors.white,
             borderRadius: BorderRadius.circular(15),
             boxShadow: [
-              if (!isDark) // Chỉ đổ bóng ở chế độ sáng
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
+              if (!isDark) 
+                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
             ],
           ),
           child: ListTile(
-            leading: Icon(
-              icon,
-              color: isDark ? Colors.greenAccent : Colors.green, // Màu xanh sáng hơn xíu cho dễ nhìn
-            ), 
+            leading: Icon(icon, color: isDark ? Colors.greenAccent : Colors.green), 
             title: Text(
               title,
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.black87, // ÉP CHỮ TRẮNG TINH
-                fontWeight: FontWeight.w500, // Cho chữ đậm lên 1 xíu để không bị chìm
-              ),
+              style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.w500),
             ), 
             trailing: Icon(Icons.chevron_right, color: isDark ? Colors.white70 : Colors.grey),
             onTap: onTap,
@@ -217,7 +372,6 @@ class ProfileBody extends StatelessWidget {
   }
 
   void _showLogoutDialog(BuildContext context) {
-    // ... Giữ nguyên như cũ ...
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
