@@ -300,16 +300,16 @@ class AboutAppScreen extends StatelessWidget {
     );
   }
 
-  void _showRatingDialog(BuildContext context) {
+void _showRatingDialog(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         title: Center(
           child: Text(
-            "Đánh giá Bếp xanh",
+            "Đánh giá Bếp Xanh",
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : Colors.black,
@@ -323,65 +323,53 @@ class AboutAppScreen extends StatelessWidget {
               "Bạn thấy ứng dụng nấu ăn này thế nào?",
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: isDark ? Colors.white : Colors.black, // Đã bỏ màu mờ
+                color: isDark ? Colors.white : Colors.black,
                 fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 20),
-            // Dãy 5 ngôi sao
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(5, (index) {
-                return IconButton(
-                  icon: const Icon(Icons.star, color: Colors.amber, size: 36),
-                  onPressed: () async {
-                    // Số sao người dùng bấm (index chạy từ 0->4, nên cộng 1)
-                    int ratingValue = index + 1;
-
-                    // Lấy thông tin user đang đăng nhập
-                    final user = AuthService.currentUser;
-
-                    // Đóng popup ngay lập tức để người dùng không phải chờ
-                    Navigator.pop(context);
-
-                    // Hiện thông báo cảm ơn
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          "Cảm ơn bạn đã đánh giá $ratingValue sao! 🥰",
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+            
+            FittedBox(
+              fit: BoxFit.scaleDown, // Tự động thu nhỏ nếu màn hình quá chật
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  return IconButton(
+                    padding: const EdgeInsets.symmetric(horizontal: 2.0), // Ép khoảng cách giữa các sao nhỏ lại
+                    constraints: const BoxConstraints(), // Bỏ giới hạn kích thước tàng hình mặc định của nút
+                    icon: const Icon(Icons.star, color: Colors.amber, size: 36),
+                    onPressed: () async {
+                      int ratingValue = index + 1; 
+                      final user = AuthService.currentUser;
+                      Navigator.pop(context); 
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            "Cảm ơn bạn đã đánh giá $ratingValue sao! 🥰", 
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)
                           ),
+                          backgroundColor: Colors.green,
                         ),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-
-                    // --- BẮT ĐẦU LƯU LÊN FIREBASE ---
-                    try {
-                      await FirebaseFirestore.instance
-                          .collection('app_ratings')
-                          .add({
-                            'userId':
-                                user?['uid'] ??
-                                'guest', // ID người dùng (nếu có)
-                            'email': user?['email'] ?? 'Khách vãng lai',
-                            'username': user?['username'] ?? 'Ẩn danh',
-                            'rating': ratingValue, // Lưu số sao (1 đến 5)
-                            'createdAt':
-                                FieldValue.serverTimestamp(), // Thời gian đánh giá
-                          });
-                      debugPrint(
-                        "Đã lưu đánh giá $ratingValue sao lên Firebase thành công!",
                       );
-                    } catch (e) {
-                      debugPrint("Lỗi khi lưu đánh giá: $e");
-                    }
-                  },
-                );
-              }),
+
+                      try {
+                        await FirebaseFirestore.instance.collection('app_ratings').add({
+                          'userId': user?['uid'] ?? 'guest',
+                          'email': user?['email'] ?? 'Khách vãng lai',
+                          'username': user?['username'] ?? 'Ẩn danh',
+                          'rating': ratingValue,
+                          'createdAt': FieldValue.serverTimestamp(),
+                        });
+                      } catch (e) {
+                        debugPrint("Lỗi khi lưu đánh giá: $e");
+                      }
+                    },
+                  );
+                }),
+              ),
             ),
+            
           ],
         ),
       ),
